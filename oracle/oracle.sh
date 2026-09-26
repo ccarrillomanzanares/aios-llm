@@ -1,45 +1,45 @@
 #!/usr/bin/env bash
 # =============================================================================
-# oracle.sh — Banco de pruebas de AIOS sobre el VPS, sin VMs ni KVM
+# oracle.sh — AIOS test bench on the VPS, without VMs or KVM
 #
-# Un rootfs de AIOS extraido de la ISO publicada, montado en SOLO LECTURA, con
-# una capa de escritura desechable encima (overlayfs). Los comandos corren
-# dentro, en su propio namespace PID/UTS, para que `ps` y `hostname` no mientan.
+# An AIOS rootfs extracted from the published ISO, mounted READ-ONLY, with a
+# throwaway write layer on top (overlayfs). Commands run inside, in their own
+# PID/UTS namespace, so that `ps` and `hostname` do not lie.
 #
-#   oracle.sh setup      monta el oraculo
-#   oracle.sh run -- CMD ejecuta CMD dentro de AIOS
-#   oracle.sh reset      devuelve el oraculo a limpio
-#   oracle.sh verify     comprueba que el oraculo es INTEGRO (base sin tocar)
-#   oracle.sh teardown   desmonta todo
-#   oracle.sh status     estado
+#   oracle.sh setup      mounts the oracle
+#   oracle.sh run -- CMD runs CMD inside AIOS
+#   oracle.sh reset      returns the oracle to a clean state
+#   oracle.sh verify     checks that the oracle is INTACT (base untouched)
+#   oracle.sh teardown   unmounts everything
+#   oracle.sh status     status
 #
-# DISENO ANTIFALLOS (cada uno responde a un fallo real observado)
-#   1. El BASE se monta en solo lectura sobre si mismo ANTES del overlay. Da
-#      igual si el overlay falla: el base no se puede escribir. Sin esto, un
-#      reset fallido escribe en el arbol bueno y contamina la linea base.
-#   2. `run` RECHAZA ejecutar si el overlay no esta montado. Un chroot sobre el
-#      directorio desnudo se ejecuta igual y no avisa: las escrituras se
-#      escapan. Preferimos fallar a envenenar datos.
-#   3. `reset` y `setup` VERIFICAN el montaje y abortan si no cuelga.
-#   4. /run y /tmp son tmpfs NUEVOS dentro del oraculo, no los del VPS. Montar
-#      el /run del VPS dejaba al descubierto su socket de D-Bus.
+# FAILSAFE DESIGN (each one answers a real observed failure)
+#   1. The BASE is mounted read-only over itself BEFORE the overlay. It does not
+#      matter if the overlay fails: the base cannot be written. Without this, a
+#      failed reset writes into the good tree and contaminates the baseline.
+#   2. `run` REFUSES to execute if the overlay is not mounted. A chroot over the
+#      bare directory runs anyway and gives no warning: writes escape. We prefer
+#      to fail rather than poison data.
+#   3. `reset` and `setup` VERIFY the mount and abort if it does not hold.
+#   4. /run and /tmp are NEW tmpfs inside the oracle, not the VPS ones. Mounting
+#      the VPS /run exposed its D-Bus socket.
 #
-# FIDELIDAD — medido, no supuesto
-#   REAL     : sven (install/remove/search/list/info/path) y su base de datos,
-#              ficheros, /etc, permisos, la mayor parte de run_command.
-#   SE NIEGA : systemctl -> "Running in chroot, ignoring command 'status'".
-#              Falla honestamente: no envenena datos.
-#   ARREGLADO: ps/top/lsof veian los procesos del VPS (281). Con namespace PID
-#              ahora ven solo los suyos (3).
-#              EFECTO SECUNDARIO, y su remedio: el mismo namespace hace que el
-#              PID 1 sea nuestro bash, asi que sven detectaba "sysvinit" cuando
-#              AIOS usa systemd. Se corrige creando /run/systemd/system en el
-#              setup, que es lo que consultan las herramientas. Arreglar una
-#              mentira creo otra: por eso todo se comprueba despues, no antes.
-#   RESIDUAL : free, df y uname -r siguen siendo datos del VPS. Quien los lea
-#              tiene que saberlo.
-#   NO SIRVE : escritorio y navegador. i3/Xorg/xdotool/scrot/chromium estan en
-#              el arbol pero sin DISPLAY real. Eso se prueba en hierro real.
+# FIDELITY — measured, not assumed
+#   REAL     : sven (install/remove/search/list/info/path) and its database,
+#              files, /etc, permissions, most of run_command.
+#   REFUSES  : systemctl -> "Running in chroot, ignoring command 'status'".
+#              It fails honestly: it does not poison data.
+#   FIXED    : ps/top/lsof saw the VPS processes (281). With a PID namespace
+#              they now see only their own (3).
+#              SIDE EFFECT, and its remedy: the same namespace makes PID 1 our
+#              bash, so sven detected "sysvinit" when AIOS uses systemd. Fixed
+#              by creating /run/systemd/system in the setup, which is what the
+#              tools query. Fixing one lie created another: that is why
+#              everything is checked afterwards, not before.
+#   RESIDUAL : free, df and uname -r are still VPS data. Whoever reads them
+#              has to know that.
+#   UNUSABLE : desktop and browser. i3/Xorg/xdotool/scrot/chromium are in the
+#              tree but with no real DISPLAY. That is tested on real hardware.
 # =============================================================================
 set -euo pipefail
 
@@ -48,21 +48,21 @@ BASE="$ROOT/base"
 UPPER="$ROOT/upper"
 WORK="$ROOT/work"
 MERGED="$ROOT/merged"
-CANARIO="$ROOT/.canario"          # fichero testigo para detectar escrituras al base
+CANARIO="$ROOT/.canario"          # witness file to detect writes to the base
 
-log()  { printf '\033[1;36m[oraculo]\033[0m %s\n' "$*"; }
+log()  { printf '\033[1;36m[oracle]\033[0m %s\n' "$*"; }
 ok()   { printf '\033[1;32m  OK\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m  AVISO\033[0m %s\n' "$*"; }
-die()  { printf '\033[1;31m[oraculo:ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
+warn() { printf '\033[1;33m  WARN\033[0m %s\n' "$*"; }
+die()  { printf '\033[1;31m[oracle:ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 
 _umount_if() { mountpoint -q "$1" 2>/dev/null && umount -R "$1" 2>/dev/null || true; }
 
-# OJO con el formato: /proc/mounts escribe
-#     <dispositivo> <punto> <tipo> <opciones> ...
-# mientras que el comando `mount` escribe "A on B type C". Buscar el texto
-# "on X type Y" en /proc/mounts NO encuentra nada nunca: el guardian decia que
-# el overlay no estaba montado cuando SI lo estaba. Se compara por campos.
-_montado_como() {   # $1 = punto de montaje, $2 = tipo (opcional)
+# CAREFUL with the format: /proc/mounts writes
+#     <device> <mountpoint> <type> <options> ...
+# while the `mount` command writes "A on B type C". Searching for the text
+# "on X type Y" in /proc/mounts NEVER finds anything: the guard said the overlay
+# was not mounted when it WAS. It is compared field by field.
+_montado_como() {   # $1 = mountpoint, $2 = type (optional)
   if [ -n "${2:-}" ]; then
     awk -v m="$1" -v t="$2" '$2==m && $3==t{f=1} END{exit !f}' /proc/mounts
   else
@@ -72,38 +72,38 @@ _montado_como() {   # $1 = punto de montaje, $2 = tipo (opcional)
 
 _es_ro() { awk -v m="$1" '$2==m && $4 ~ /(^|,)ro(,|$)/{f=1} END{exit !f}' /proc/mounts; }
 
-# El base en solo lectura sobre si mismo: la red de seguridad principal.
+# The base read-only over itself: the main safety net.
 _base_ro() {
   if ! mountpoint -q "$BASE"; then
     mount --bind "$BASE" "$BASE"
     mount -o remount,ro,bind "$BASE"
   fi
-  mountpoint -q "$BASE" || die "no pude montar el base en solo lectura"
+  mountpoint -q "$BASE" || die "could not mount the base read-only"
   _es_ro "$BASE" && return 0
-  warn "no confirmo que $BASE este en ro; revisa /proc/mounts"
+  warn "cannot confirm that $BASE is ro; check /proc/mounts"
 }
 
 _overlay_montado() { _montado_como "$MERGED" overlay; }
 
 cmd_setup() {
-  [ -d "$BASE" ] || die "no existe $BASE (extrae el rootfs de la ISO primero)"
+  [ -d "$BASE" ] || die "$BASE does not exist (extract the rootfs from the ISO first)"
   [ -e "$BASE/usr/sbin/sven" ] || [ -e "$BASE/usr/bin/sven" ] \
-    || die "$BASE no parece un rootfs de AIOS"
+    || die "$BASE does not look like an AIOS rootfs"
 
   mkdir -p "$UPPER" "$WORK" "$MERGED"
   _base_ro
 
-  _overlay_montado && log "overlay ya estaba montado"
+  _overlay_montado && log "overlay was already mounted"
   _overlay_montado || {
-    log "montando overlay (base ro + capa desechable)"
+    log "mounting overlay (ro base + throwaway layer)"
     mount -t overlay overlay \
       -o "lowerdir=$BASE,upperdir=$UPPER,workdir=$WORK" "$MERGED" \
-      || die "mount -t overlay fallo"
+      || die "mount -t overlay failed"
   }
-  _overlay_montado || die "el overlay no quedo montado: NO se ejecuta nada asi"
+  _overlay_montado || die "the overlay did not stay mounted: NOTHING is executed like this"
 
-  log "montando pseudo-ficherosystems"
-  # proc/sys/dev vienen del VPS (necesarios); run y tmp son NUEVOS
+  log "mounting pseudo-filesystems"
+  # proc/sys/dev come from the VPS (required); run and tmp are NEW
   for m in proc sys dev dev/pts; do
     mkdir -p "$MERGED/$m"
     mountpoint -q "$MERGED/$m" || mount --bind "/$m" "$MERGED/$m"
@@ -113,27 +113,27 @@ cmd_setup() {
     mountpoint -q "$MERGED/$m" || mount -t tmpfs -o mode=755,size=512m tmpfs "$MERGED/$m"
   done
 
-  # Marcador de systemd. AIOS usa systemd, pero dentro del namespace PID el
-  # PID 1 es nuestro bash: las herramientas que detectan el init (sven entre
-  # ellas) concluyen "sysvinit" y se equivocan. Este directorio es lo que
-  # consultan. Sin el, sven MIENTE sobre el init del sistema.
+  # systemd marker. AIOS uses systemd, but inside the PID namespace PID 1 is our
+  # bash: the tools that detect the init (sven among them) conclude "sysvinit"
+  # and get it wrong. This directory is what they query. Without it, sven LIES
+  # about the system's init.
   mkdir -p "$MERGED/run/systemd/system" "$MERGED/run/systemd/private" \
            "$MERGED/run/systemd/seats" "$MERGED/run/systemd/users"
   mkdir -p "$MERGED/etc/systemd/system" 2>/dev/null || true
 
-  # DNS: el rootfs trae el stub de systemd-resolved, que aqui no existe
+  # DNS: the rootfs ships the systemd-resolved stub, which does not exist here
   [ -s "$MERGED/etc/resolv.conf" ] || cp /etc/resolv.conf "$MERGED/etc/resolv.conf"
 
-  _overlay_montado || die "el overlay desaparecio tras montar los pseudo-fs"
-  # canario: si alguien escribe al base, esto lo delata
+  _overlay_montado || die "the overlay vanished after mounting the pseudo-fs"
+  # canary: if anyone writes to the base, this gives them away
   [ -e "$CANARIO" ] || : > "$CANARIO"
-  ok "oraculo montado y verificado"
+  ok "oracle mounted and verified"
 }
 
 cmd_run() {
   [ "${1:-}" = "--" ] && shift
-  [ $# -gt 0 ] || die "uso: oracle.sh run -- COMANDO [args]"
-  _overlay_montado || die "el overlay NO esta montado. Escribir ahora escaparia al arbol base. Ejecuta: oracle.sh setup"
+  [ $# -gt 0 ] || die "usage: oracle.sh run -- COMMAND [args]"
+  _overlay_montado || die "the overlay is NOT mounted. Writing now would escape into the base tree. Run: oracle.sh setup"
 
   unshare --pid --uts --fork --mount-proc="$MERGED/proc" \
     chroot "$MERGED" /bin/bash -c "
@@ -146,69 +146,69 @@ cmd_run() {
 }
 
 cmd_reset() {
-  _overlay_montado || { log "no montado; nada que resetear"; cmd_setup >/dev/null; return 0; }
-  log "reseteando"
+  _overlay_montado || { log "not mounted; nothing to reset"; cmd_setup >/dev/null; return 0; }
+  log "resetting"
   for m in tmp run dev/pts dev sys proc; do _umount_if "$MERGED/$m"; done
   _umount_if "$MERGED"
-  _overlay_montado && die "no pude desmontar el overlay; no reseteo a ciegas"
+  _overlay_montado && die "could not unmount the overlay; refusing to reset blindly"
   rm -rf "${UPPER:?}"/* "${WORK:?}"/*
   cmd_setup >/dev/null
-  _overlay_montado || die "el reset no dejo el overlay montado"
-  ok "reset hecho y verificado (capa de escritura vacia)"
+  _overlay_montado || die "the reset did not leave the overlay mounted"
+  ok "reset done and verified (empty write layer)"
 }
 
 cmd_teardown() {
   for m in tmp run dev/pts dev sys proc; do _umount_if "$MERGED/$m"; done
   _umount_if "$MERGED"
   _umount_if "$BASE"
-  log "desmontado"
+  log "unmounted"
 }
 
-# La prueba que importa: ¿el base sigue sin tocar?
+# The test that matters: is the base still untouched?
 cmd_verify() {
   local fallos=0
-  echo "=== INTEGRIDAD DEL ORACULO ==="
+  echo "=== ORACLE INTEGRITY ==="
 
-  if mountpoint -q "$BASE"; then ok "base montado en solo lectura"; else warn "base NO esta montado en ro"; fallos=$((fallos+1)); fi
-  if _overlay_montado; then ok "overlay montado"; else warn "overlay NO montado"; fallos=$((fallos+1)); fi
+  if mountpoint -q "$BASE"; then ok "base mounted read-only"; else warn "base is NOT mounted ro"; fallos=$((fallos+1)); fi
+  if _overlay_montado; then ok "overlay mounted"; else warn "overlay NOT mounted"; fallos=$((fallos+1)); fi
 
-  echo -n "  escrituras al base: "
+  echo -n "  writes to the base: "
   if [ -w "$BASE/" ]; then
     ( echo test > "$BASE/.prueba_escritura" ) 2>/dev/null \
-      && { warn "EL BASE ES ESCRIBIBLE. Grupo, no oraculo."; rm -f "$BASE/.prueba_escritura"; fallos=$((fallos+1)); } \
-      || ok "rechaza escrituras"
+      && { warn "THE BASE IS WRITABLE. Group, not oracle."; rm -f "$BASE/.prueba_escritura"; fallos=$((fallos+1)); } \
+      || ok "refuses writes"
   else
-    ok "rechaza escrituras"
+    ok "refuses writes"
   fi
 
-  echo -n "  ficheros en la capa de escritura: "
+  echo -n "  files in the write layer: "
   local n; n=$(find "$UPPER" -type f 2>/dev/null | wc -l)
   echo "$n"
-  if [ "$n" -eq 0 ]; then ok "capa limpia"; else warn "capa con $n ficheros (hay dano sin resetear)"; fi
+  if [ "$n" -eq 0 ]; then ok "clean layer"; else warn "layer with $n files (damage not reset)"; fi
 
-  echo -n "  sven responde: "
-  if cmd_run -- 'sven version' >/dev/null 2>&1; then ok "si"; else warn "no"; fallos=$((fallos+1)); fi
+  echo -n "  sven responds: "
+  if cmd_run -- 'sven version' >/dev/null 2>&1; then ok "yes"; else warn "no"; fallos=$((fallos+1)); fi
 
-  echo -n "  init que detecta sven (debe decir systemd): "
+  echo -n "  init that sven detects (it must say systemd): "
   local ini; ini=$(cmd_run -- 'sven version 2>&1 | grep -oE "systemd|sysvinit|openrc" | head -1' 2>/dev/null || echo "?")
   echo "$ini"
-  [ "$ini" = "systemd" ] && ok "init correcto" || warn "sven detecta '$ini' y deberia ser systemd: revisa /run/systemd/system"
+  [ "$ini" = "systemd" ] && ok "correct init" || warn "sven detects '$ini' and it should be systemd: check /run/systemd/system"
 
-  echo -n "  procesos que ve ps (debe ser <10): "
+  echo -n "  processes that ps sees (must be <10): "
   local p; p=$(cmd_run -- 'ps -e --no-headers 2>/dev/null | wc -l' 2>/dev/null || echo "?")
   echo "$p"
-  if [ "$p" != "?" ] && [ "$p" -lt 10 ]; then ok "namespace PID aislado"; else warn "ps ve demasiado: el aislamiento falla"; fallos=$((fallos+1)); fi
+  if [ "$p" != "?" ] && [ "$p" -lt 10 ]; then ok "isolated PID namespace"; else warn "ps sees too much: the isolation fails"; fallos=$((fallos+1)); fi
 
   echo
-  [ "$fallos" -eq 0 ] && { ok "ORACULO INTEGRO"; return 0; } || { warn "$fallos comprobacion(es) fallidas"; return 1; }
+  [ "$fallos" -eq 0 ] && { ok "ORACLE INTACT"; return 0; } || { warn "$fallos failed check(s)"; return 1; }
 }
 
 cmd_status() {
   echo "ROOT    : $ROOT"
   echo "base    : $(du -sh "$BASE" 2>/dev/null | cut -f1)  ($BASE)"
-  echo "overlay : $(_overlay_montado && echo MONTADO || echo 'NO montado')"
-  echo "upper   : $(find "$UPPER" -type f 2>/dev/null | wc -l) ficheros"
-  _overlay_montado && { echo -n "sven    : "; cmd_run -- 'sven version 2>&1 | grep -oE "SVEN  v[0-9.]+" | head -1' || echo "no responde"; }
+  echo "overlay : $(_overlay_montado && echo MOUNTED || echo 'NOT mounted')"
+  echo "upper   : $(find "$UPPER" -type f 2>/dev/null | wc -l) files"
+  _overlay_montado && { echo -n "sven    : "; cmd_run -- 'sven version 2>&1 | grep -oE "SVEN  v[0-9.]+" | head -1' || echo "no response"; }
 }
 
 case "${1:-}" in
@@ -219,14 +219,14 @@ case "${1:-}" in
   teardown) cmd_teardown ;;
   status)   cmd_status ;;
   *) cat <<'TXT'
-Uso: oracle.sh {setup|run -- CMD|reset|verify|teardown|status}
+Usage: oracle.sh {setup|run -- CMD|reset|verify|teardown|status}
 
-  setup        monta el oraculo (base en solo lectura + capa desechable)
-  run -- CMD   ejecuta CMD dentro de AIOS
-  reset        devuelve el oraculo a limpio
-  verify       comprueba que el base sigue sin tocar  <-- ejecutar a menudo
-  teardown     desmonta todo
-  status       estado
+  setup        mounts the oracle (read-only base + throwaway layer)
+  run -- CMD   runs CMD inside AIOS
+  reset        returns the oracle to a clean state
+  verify       checks that the base is still untouched  <-- run often
+  teardown     unmounts everything
+  status       status
 TXT
   ;;
 esac

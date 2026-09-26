@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Pruebas INOFENSIVAS de dos agujeros detectados leyendo el codigo.
+"""HARMLESS tests for two holes found by reading the code.
 
-1. process_start NO pasa por el filtro de seguridad (process.py no menciona
-   _is_blocked_command ni _is_destructive_command). Se demuestra con un
-   comando que el filtro SI marca como destructivo, pero sobre un directorio
-   temporal mio: si se ejecuta sin que aparezca ninguna peticion de
-   confirmacion, el filtro no intervino.
+1. process_start does NOT go through the security filter (process.py does not
+   mention _is_blocked_command nor _is_destructive_command). It is shown with a
+   command that the filter DOES flag as destructive, but over a temporary
+   directory of mine: if it runs without any confirmation prompt appearing, the
+   filter did not take part.
 
-2. git_operation mete `args` dentro de una cadena que ejecuta `shell=True`:
-   inyeccion de comandos. Se demuestra con un `; echo` inofensivo.
+2. git_operation puts `args` inside a string that it runs with `shell=True`:
+   command injection. It is shown with a harmless `; echo`.
 
-Nada de esto toca ficheros reales: /var/tmp/aios-prueba es mio y se borra.
+None of this touches real files: /var/tmp/aios-prueba is mine and gets deleted.
 
-Uso:  cd ~/aios-agent && PYTHONPATH=$HOME/aios-agent python3 <este_fichero>
+Usage:  cd ~/aios-agent && PYTHONPATH=$HOME/aios-agent python3 <this_file>
 """
 import importlib.util
 import json
@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.expanduser("~/aios-agent"))
 def cargar(nombre, ruta):
     spec = importlib.util.spec_from_file_location(nombre, ruta)
     mod = importlib.util.module_from_spec(spec)
-    sys.modules[nombre] = mod          # para que los imports internos se resuelvan
+    sys.modules[nombre] = mod          # so that the internal imports resolve
     spec.loader.exec_module(mod)
     return mod
 
@@ -35,67 +35,67 @@ tools = cargar("tools", os.path.expanduser("~/aios-agent/tools.py"))
 process = cargar("process", os.path.expanduser("~/aios-agent/process.py"))
 
 print("=" * 78)
-print("AGUJERO 1 — ¿process_start respeta el filtro de seguridad?")
+print("HOLE 1 — does process_start respect the security filter?")
 print("=" * 78)
 
 PRUEBA = "/var/tmp/aios-prueba"
 os.makedirs(PRUEBA, exist_ok=True)
 with open(os.path.join(PRUEBA, "fichero.txt"), "w") as f:
-    f.write("esto debe seguir aqui si el filtro funciona\n")
+    f.write("this must still be here if the filter works\n")
 
 COMANDO = f"find {PRUEBA} -delete"
-print(f"\nDirectorio de prueba: {PRUEBA}")
-print(f"Contenido antes      : {os.listdir(PRUEBA)}")
-print(f"\nComando a ejecutar   : {COMANDO}")
-print(f"¿El filtro lo marca destructivo?  _is_destructive_command -> "
+print(f"\nTest directory     : {PRUEBA}")
+print(f"Content before     : {os.listdir(PRUEBA)}")
+print(f"\nCommand to run     : {COMANDO}")
+print(f"Does the filter flag it destructive?  _is_destructive_command -> "
       f"{tools._is_destructive_command(COMANDO)}")
-print(f"¿El filtro lo bloquea?            _is_blocked_command     -> "
+print(f"Does the filter block it?             _is_blocked_command     -> "
       f"{tools._is_blocked_command(COMANDO)}")
 
-print("\nAhora el MISMO comando, pero por process_start (sin pedir nada):")
+print("\nNow the SAME command, but through process_start (without asking anything):")
 try:
-    # process_start devuelve informacion de la sesion; se lanza y se cierra
+    # process_start returns session information; it is launched and closed
     salida = process.process_start(COMANDO)
-    print(f"  process_start respondio: {str(salida)[:200]}")
+    print(f"  process_start replied: {str(salida)[:200]}")
 except Exception as e:
-    print(f"  process_start lanzo una excepcion: {e}")
+    print(f"  process_start raised an exception: {e}")
 
 time.sleep(2)
 try:
     existentes = os.listdir(PRUEBA)
 except FileNotFoundError:
     existentes = []
-print(f"\nContenido DESPUES   : {existentes if existentes else '(vacio o borrado)'}")
+print(f"\nContent AFTER      : {existentes if existentes else '(empty or deleted)'}")
 if not existentes:
-    print("  >>> CONFIRMADO: el comando destructivo se ejecuto SIN confirmacion.")
-    print("      run_command lo habria frenado; process_start no consulta el filtro.")
+    print("  >>> CONFIRMED: the destructive command ran WITHOUT confirmation.")
+    print("      run_command would have stopped it; process_start does not consult the filter.")
 else:
-    print("  >>> El filtro intervino (o el comando no llego a correr).")
+    print("  >>> The filter intervened (or the command never ran).")
 
 print()
 print("=" * 78)
-print("AGUJERO 2 — ¿git_operation acepta inyeccion de comandos?")
+print("HOLE 2 — does git_operation accept command injection?")
 print("=" * 78)
-print("\nLa linea del codigo es:")
+print("\nThe line of code is:")
 print('  command = f"git -C {repo} {op} {args}"')
 print("  subprocess.run(command, shell=True, ...)")
-print("  args se concatena SIN ESCAPAR dentro de una cadena de shell.")
-print("\nPrueba con un `; echo` inofensivo (no borra ni cambia nada):")
+print("  args is concatenated WITHOUT ESCAPING inside a shell string.")
+print("\nTest with a harmless `; echo` (it deletes and changes nothing):")
 try:
     r = tools.git_operation("status", "; echo INYECTADO_POR_EL_MODELO")
     datos = json.loads(r) if isinstance(r, str) else r
-    print(f"  salida: {json.dumps(datos, ensure_ascii=False)[:300]}")
+    print(f"  output: {json.dumps(datos, ensure_ascii=False)[:300]}")
     if "INYECTADO_POR_EL_MODELO" in json.dumps(datos):
-        print("  >>> CONFIRMADO: el comando inyectado se ejecuto.")
+        print("  >>> CONFIRMED: the injected command ran.")
     else:
-        print("  >>> no se vio el marcador (revisar manualmente)")
+        print("  >>> marker not seen (check manually)")
 except Exception as e:
-    print(f"  excepcion: {e}")
+    print(f"  exception: {e}")
 
-print("\nNota: el repo de git_operation esta fijado a /home/ccmai/sre-agent,")
-print(f"      que es el nombre VIEJO del proyecto. ¿existe? -> {os.path.isdir('/home/ccmai/sre-agent')}")
+print("\nNote: the repo of git_operation is pinned to /home/ccmai/sre-agent,")
+print(f"      which is the OLD name of the project. Does it exist? -> {os.path.isdir('/home/ccmai/sre-agent')}")
 
-# limpieza
+# cleanup
 try:
     os.makedirs(PRUEBA, exist_ok=True)
     for f in os.listdir(PRUEBA):

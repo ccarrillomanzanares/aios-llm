@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Prueba DECISIVA: ¿process_start respeta el filtro que run_command aplica?
+"""DECISIVE test: does process_start respect the filter that run_command applies?
 
-La version anterior de esta prueba no valia: use `find /var/tmp/... -delete`,
-que el filtro EXCLUYE a proposito (exencion de /var/tmp). No demostraba nada.
+The previous version of this test was worthless: it used `find /var/tmp/... -delete`,
+which the filter EXCLUDES on purpose (/var/tmp exemption). It proved nothing.
 
-Esta version usa un comando que el filtro SI marca, y compara las dos vias
-sobre el mismo directorio desechable. Nada real se toca: el directorio es mio
-y esta bajo mi $HOME.
+This version uses a command that the filter DOES flag, and compares the two paths
+over the same throwaway directory. Nothing real is touched: the directory is mine
+and it is under my $HOME.
 
-    run_command   -> deberia NEGARSE
-    process_start -> si borra, no consulta el filtro. Bypass.
+    run_command   -> should REFUSE
+    process_start -> if it deletes, it does not consult the filter. Bypass.
 
-Uso: cd ~/aios-agent && python3 <este_fichero>
+Usage: cd ~/aios-agent && python3 <this_file>
 """
 import importlib.util
 import json
@@ -42,7 +42,7 @@ def preparar():
     shutil.rmtree(DIR, ignore_errors=True)
     os.makedirs(DIR, exist_ok=True)
     with open(os.path.join(DIR, "dato.txt"), "w") as f:
-        f.write("si esto sobrevive, el filtro funciono\n")
+        f.write("if this survives, the filter worked\n")
 
 
 def vive():
@@ -50,51 +50,51 @@ def vive():
 
 
 print("=" * 78)
-print("¿process_start respeta el filtro de seguridad?")
+print("Does process_start respect the security filter?")
 print("=" * 78)
-print(f"\nComando de prueba : {CMD}")
-print(f"Directorio        : {DIR}")
-print(f"\nVeredicto del filtro sobre ese comando:")
+print(f"\nTest command : {CMD}")
+print(f"Directory    : {DIR}")
+print(f"\nFilter verdict on that command:")
 print(f"  _is_blocked_command        -> {mod._is_blocked_command(CMD)}")
 print(f"  _is_destructive_command    -> {mod._is_destructive_command(CMD)}")
 
-# ---- VIA 1: run_command (deberia negarse) ----
+# ---- PATH 1: run_command (should refuse) ----
 print("\n" + "-" * 78)
-print("VIA 1: run_command()  — pasa por el filtro")
+print("PATH 1: run_command()  — goes through the filter")
 print("-" * 78)
 preparar()
-print(f"  antes: ¿existe el directorio? {vive()}")
+print(f"  before: does the directory exist? {vive()}")
 salida = mod.run_command(CMD)
 try:
     d = json.loads(salida)
     resumen = {k: v for k, v in d.items() if k in ("error", "exit_code", "stderr")}
 except Exception:
     resumen = str(salida)[:200]
-print(f"  run_command respondio: {json.dumps(resumen, ensure_ascii=False) if isinstance(resumen, dict) else resumen}")
-print(f"  despues: ¿existe el directorio? {vive()}  "
-      f"{'-> SE NEGO, correcto' if vive() else '-> LO BORRO, el filtro no funciono'}")
+print(f"  run_command replied: {json.dumps(resumen, ensure_ascii=False) if isinstance(resumen, dict) else resumen}")
+print(f"  after: does the directory exist? {vive()}  "
+      f"{'-> IT REFUSED, correct' if vive() else '-> IT DELETED IT, the filter did not work'}")
 
-# ---- VIA 2: process_start (¿consulta el filtro?) ----
+# ---- PATH 2: process_start (does it consult the filter?) ----
 print("\n" + "-" * 78)
-print("VIA 2: process_start()  — NO esta en tools.py, vive en process.py")
+print("PATH 2: process_start()  — it is NOT in tools.py, it lives in process.py")
 print("-" * 78)
 preparar()
-print(f"  antes: ¿existe el directorio? {vive()}")
+print(f"  before: does the directory exist? {vive()}")
 resp = proc.process_start(CMD)
-print(f"  process_start respondio: {str(resp)[:220]}")
+print(f"  process_start replied: {str(resp)[:220]}")
 time.sleep(2)
-print(f"  despues: ¿existe el directorio? {vive()}  "
-      f"{'-> NO LO BORRO' if vive() else '-> LO BORRO SIN CONSULTAR EL FILTRO'}")
+print(f"  after: does the directory exist? {vive()}  "
+      f"{'-> IT DID NOT DELETE IT' if vive() else '-> IT DELETED IT WITHOUT CONSULTING THE FILTER'}")
 
 print("\n" + "=" * 78)
 if not vive():
-    print("RESULTADO: BYPASS CONFIRMADO.")
-    print("  El mismo comando que run_command bloquea, lanzado por process_start,")
-    print("  se ejecuta sin bloqueo y sin confirmacion.")
-    print("  La capa de seguridad solo cubre UNA de las dos vias de ejecucion.")
+    print("RESULT: BYPASS CONFIRMED.")
+    print("  The same command that run_command blocks, launched by process_start,")
+    print("  runs with no block and no confirmation.")
+    print("  The security layer only covers ONE of the two execution paths.")
 else:
-    print("RESULTADO: no hay bypass por esta via.")
+    print("RESULT: there is no bypass through this path.")
 print("=" * 78)
 
 shutil.rmtree(DIR, ignore_errors=True)
-print("\n(limpieza: directorio de prueba borrado)")
+print("\n(cleanup: test directory deleted)")

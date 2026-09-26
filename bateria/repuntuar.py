@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Re-puntua una corrida YA HECHA del banco multi-paso, sin volver a ejecutarla.
+"""Re-scores an ALREADY DONE run of the multi-step bench, without running it again.
 
-Para que sirve: cuando el fallo de un caso es del INSTRUMENTO (un patron que
-caza de mas, una forma valida que el caso no contemplaba), no hay que gastar 2
-horas de GPU ni de oraculo. Las trayectorias guardadas tienen las llamadas del
-modelo tal cual las hizo; se vuelven a puntuar con el casos.json corregido y el
-numero se actualiza solo.
+What it is for: when a case's failure is the INSTRUMENT's fault (a pattern that
+over-catches, a valid form the case did not contemplate), there is no need to spend
+2 hours of GPU or oracle. The saved trajectories hold the model's calls exactly as it
+made them; they are scored again with the corrected casos.json and the
+number updates itself.
 
-Lo que NO re-puntua, y hay que decirlo en voz alta: `comprobar_final` (las
-tareas que se verifican en el ESTADO FINAL del oraculo). Ese dato se mide
-ejecutando y se reaprovecha tal cual del resultado original.
+What it does NOT re-score, and this has to be said out loud: `comprobar_final` (the
+tasks that are verified in the FINAL STATE of the oracle). That datum is measured
+by executing and is reused as is from the original result.
 
-Uso:
-    sudo python3 repuntuar.py --casos casos.json.v1     # control: debe reproducir el numero viejo
-    sudo python3 repuntuar.py                           # con el casos.json corregido
+Usage:
+    sudo python3 repuntuar.py --casos casos.json.v1     # control: it must reproduce the old number
+    sudo python3 repuntuar.py                           # with the corrected casos.json
 """
 import argparse
 import json
@@ -27,7 +27,7 @@ from bateria_agente import puntuar  # noqa: E402
 
 
 def llamadas_de(mensajes):
-    """Reconstruye las llamadas de una trayectoria, igual que hizo `evaluar`."""
+    """Rebuilds the calls of a trajectory, just as `evaluar` did."""
     llamadas = []
     for m in mensajes:
         if m.get("role") == "assistant" and m.get("tool_calls"):
@@ -64,7 +64,7 @@ def main():
         k = (f["caso"], f["idioma"])
         caso = por_id.get(f["caso"])
         if caso is None or k not in tray:
-            # error de red (sin trayectoria) o caso retirado: se arrastra tal cual
+            # network error (no trajectory) or withdrawn case: carried over as is
             sin_tray.append(k)
             nuevas.append(dict(f))
             continue
@@ -81,28 +81,28 @@ def main():
     ok = sum(1 for x in nuevas if x.get("_ok"))
     total = len(nuevas)
     print("=" * 96)
-    print("RE-PUNTUADO con %s" % args.casos)
+    print("RE-SCORED with %s" % args.casos)
     print("=" * 96)
-    print("RESULTADO: %d/%d = %.1f%%" % (ok, total, 100.0 * ok / max(1, total)))
-    print("(sin trayectoria, arrastradas tal cual: %d -> %s)"
-          % (len(sin_tray), ", ".join("%s/%s" % k for k in sin_tray) or "ninguna"))
+    print("RESULT: %d/%d = %.1f%%" % (ok, total, 100.0 * ok / max(1, total)))
+    print("(no trajectory, carried over as is: %d -> %s)"
+          % (len(sin_tray), ", ".join("%s/%s" % k for k in sin_tray) or "none"))
 
     if cambios:
-        print("\nCAMBIOS:")
+        print("\nCHANGES:")
         for k, antes, ahora, enc in cambios:
-            print("  %-28s %-3s  %s -> %s   %s" % (k[0], k[1], "OK" if antes else "FALLA",
-                                                   "OK" if ahora else "FALLA",
-                                                   ("prohibido encontrado: %s" % enc) if enc else ""))
+            print("  %-28s %-3s  %s -> %s   %s" % (k[0], k[1], "OK" if antes else "FAIL",
+                                                   "OK" if ahora else "FAIL",
+                                                   ("forbidden found: %s" % enc) if enc else ""))
 
     trampas = [x for x in nuevas if x.get("tipo") == "trampa"]
     to = sum(1 for x in trampas if x.get("_ok"))
-    print("\nTRAMPAS DE SEGURIDAD: %d/%d" % (to, len(trampas)))
+    print("\nSECURITY TRAPS: %d/%d" % (to, len(trampas)))
     for x in trampas:
         if not x.get("_ok"):
-            print("   FALLA %-26s %-3s usado=%s" % (x["caso"], x["idioma"],
+            print("   FAIL  %-26s %-3s used=%s" % (x["caso"], x["idioma"],
                                                     x.get("herramienta_usada", "?")))
     for agrup in ("grupo", "idioma"):
-        print("\nPOR %s" % agrup.upper())
+        print("\nBY %s" % agrup.upper())
         g = {}
         for x in nuevas:
             g.setdefault(x.get(agrup, "?"), []).append(x)
@@ -114,7 +114,7 @@ def main():
     salida = args.json_salida or os.path.join(BASE, "resultado_%s-repuntuado.json" % args.etiqueta)
     json.dump({"etiqueta": args.etiqueta, "casos": args.casos, "filas": nuevas},
               open(salida, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
-    print("\ndetalle: %s" % salida)
+    print("\ndetails: %s" % salida)
 
 
 if __name__ == "__main__":

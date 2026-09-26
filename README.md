@@ -1,75 +1,81 @@
 # aios-llm
 
-Un LLM pequeño que **quepa en CPU** y sea el asistente de **AIOS**, no de Linux en general.
+A small LLM that **fits on CPU** and is the assistant of **AIOS**, not of Linux in general.
 
-AIOS es **Linux From Scratch + `sven`**: `apt`, `dnf` y `pacman` **no existen** ahí, y ningún
-modelo público ha visto eso. Cualquier modelo responde mal a la tarea más frecuente de un
-asistente de sistema — instalar y gestionar software — y eso no se arregla con más parámetros.
+AIOS is **Linux From Scratch + `sven`**: `apt`, `dnf` and `pacman` **do not exist** there, and no
+public model has ever seen that. Any model answers the most frequent task of a system assistant
+wrongly — installing and managing software — and that is not fixed with more parameters.
 
-## El problema que resuelve
+## The problem it solves
 
-Hoy, antes de cada respuesta, hay que darle al modelo un system prompt de **11.881 caracteres**
-más 29 esquemas de herramienta. En CPU eso cuesta **~96 s el primer turno de una sesión** y ~6 s
-los siguientes, que es la caché de prefijo de `llama-server` haciendo su trabajo con un prefijo
-idéntico que se repite en cada petición.
+Today, before every answer, the model has to be given a system prompt of **11.881 characters**
+plus 29 tool schemas. On CPU that costs **~96 s for the first turn of a session** and ~6 s for the
+following ones, which is the prefix cache of `llama-server` doing its job with an identical prefix
+that repeats on every request.
 
-El objetivo no es «saber más»: es **internalizar el contrato en los pesos** para poder servir con
-un prompt de ~800 tokens. Por eso se mide TTFT y tokens de prompt antes y después.
+The goal is not to “know more”: it is to **internalize the contract in the weights** so it can serve
+with a prompt of ~800 tokens. That is why TTFT and prompt tokens are measured before and after.
 
-## Estado medido
+## Measured state
 
-| | Multi-paso | Un paso |
+| | Multi-step | Single-step |
 |---|---|---|
-| Banco de evaluación (29 casos × 6 idiomas) | **173/174 = 99,4 %** | 154/174 = 88,5 % |
-| Trampas de seguridad | **53/54 = 98 %** | 50/54 = 93 % |
-| Tareas verificadas por ejecución real | **12/12** | — |
+| Evaluation bench (29 cases × 6 languages) | **173/174 = 99,4 %** | 154/174 = 88,5 % |
+| Security traps | **53/54 = 98 %** | 50/54 = 93 % |
+| Tasks verified by real execution | **12/12** | — |
 
-Modelo medido: **Qwen3.6-35B-A3B** (el que sirve hoy en producción). Ese número es el **listón**
-que tiene que superar el modelo pequeño en el dominio AIOS para integrarse. Si no lo supera, el
-resultado sigue valiendo: el 35B se queda, y aquí está el número que lo demuestra.
+Measured model: **Qwen3.6-35B-A3B** (the one serving in production today). That number is the **bar**
+the small model has to clear in the AIOS domain to be integrated. If it does not clear it, the
+result still counts: the 35B stays, and here is the number that proves it.
 
-**Multi-paso no es un detalle de implementación**: con el mismo modelo, medir en un solo paso da
-**11 puntos menos**. Un banco de una petición → una respuesta puntúa mal a un agente que trabaja
-en varios pasos, y el error no se ve: parece que falla el modelo.
+**Multi-step is not an implementation detail**: with the same model, measuring in a single step gives
+**11 points less**. A bench of one request → one response scores an agent that works in several steps
+badly, and the error is not visible: it looks like the model is failing.
 
-## Cómo está montado
+## How it is put together
 
 | | |
 |---|---|
-| `bateria/` | El banco de evaluación: casos, ejecutor, arneses y el **contrato real de producción** |
-| `bateria/ejecutor.py` | Traduce las 29 herramientas de `aios-agent` a órdenes reales contra el oráculo |
-| `bateria/repuntuar.py` | Re-puntúa una corrida ya hecha cuando el fallo era del instrumento |
-| `oracle/oracle.sh` | El oráculo: una copia desechable de AIOS (chroot + overlay) |
-| `auditoria/` | Auditoría de la capa de permisos de `aios-agent` y su batería de no-regresión |
-| `ESTADO.md` | **El documento vivo del proyecto**: qué está hecho, qué se midió y qué falta |
+| `bateria/` | The evaluation bench: cases, executor, harnesses and the **real production contract** |
+| `bateria/ejecutor.py` | Translates the 29 `aios-agent` tools into real commands against the oracle |
+| `bateria/repuntuar.py` | Re-scores an already completed run when the failure was in the instrument |
+| `oracle/oracle.sh` | The oracle: a disposable copy of AIOS (chroot + overlay) |
+| `auditoria/` | Audit of the permission layer of `aios-agent` and its non-regression bench |
+| `ESTADO.md` | **The living document of the project**: what is done, what was measured and what is missing |
 
-### El oráculo
+### The oracle
 
-Un `chroot` sobre el rootfs extraído del squashfs de la ISO publicada, con el árbol base en
-**solo lectura** y una capa de escritura desechable encima. Es la misma versión que tienen los
-usuarios, y el caudal medido es de **0,17 s por ciclo de escritura + reset**.
+A `chroot` over the rootfs extracted from the squashfs of the published ISO, with the base tree
+**read-only** and a disposable write layer on top. It is the same version the users have, and the
+measured throughput is **0,17 s per write + reset cycle**.
 
 ```bash
-sudo oracle/oracle.sh setup            # monta (idempotente)
-sudo oracle/oracle.sh run -- "CMD"     # ejecuta SIN resetear
-sudo oracle/oracle.sh reset            # tira la capa desechable
-sudo oracle/oracle.sh verify           # integridad: 8 comprobaciones
+sudo oracle/oracle.sh setup            # mounts (idempotent)
+sudo oracle/oracle.sh run -- "CMD"     # runs WITHOUT resetting
+sudo oracle/oracle.sh reset            # discards the disposable layer
+sudo oracle/oracle.sh verify           # integrity: 8 checks
 ```
 
-Nada se ejecuta sin `verify` antes y después: **un banco que no se comprueba fabrica datos
-falsos en silencio**, que en un proyecto de «dataset verificado por ejecución» es el peor
-resultado posible.
+Nothing runs without `verify` before and after: **a bench that is not checked fabricates fake
+data in silence**, which in a project of “dataset verified by execution” is the worst possible
+result.
 
-## Dos reglas del proyecto
+## Two rules of the project
 
-> **«El fichero bueno existe» ≠ «el fichero que se ejecuta es el bueno».**
+> **“The good file exists” ≠ “the file that runs is the good one”.**
 
-Se verifica el md5 **en la máquina que EJECUTA**, no solo en la de origen, y un md5 que no
-cuadra no se ignora: se para y se arregla.
+The md5 is verified **on the machine that RUNS**, not only on the origin machine, and an md5 that
+does not match is not ignored: it is stopped and fixed.
 
-> **Un caso que falla es una HIPÓTESIS, no un veredicto.**
+> **A case that fails is a HYPOTHESIS, not a verdict.**
 
-Antes de apuntar un fallo al modelo, **leer la llamada real**. En la primera corrida completa,
-**6 de los 7 fallos eran del instrumento**: un patrón de cadena prohibida que cazaba de más, y
-formas válidas de resolver un caso que el caso no contemplaba. Un banco mal diseñado da un número
-que no vale nada, y el número *parece* objetivo.
+Before blaming a failure on the model, **read the real call**. In the first full run,
+**6 of the 7 failures were in the instrument**: a forbidden-string pattern that caught too much, and
+valid ways of solving a case that the case did not contemplate. A badly designed bench gives a
+number worth nothing, and the number *looks* objective.
+
+## Language
+
+Everything in this repository is in **English** — documents, code comments and the messages the
+bench prints. The only exception is `PLAN-MAESTRO.md`, which stays in Spanish on purpose: it is the
+internal planning document.

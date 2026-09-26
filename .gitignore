@@ -1,9 +1,9 @@
-# Artefactos de Python
+# Python artifacts
 __pycache__/
 *.pyc
 
-# Salidas de las corridas: NO se versionan (se regeneran y pesan)
-# La evidencia del numero medido SI: resultado_35b-multipaso-repuntuado.json y multi.log
+# Run outputs: NOT versioned (they are regenerated and are heavy)
+# The evidence of the measured number IS: resultado_35b-multipaso-repuntuado.json and multi.log
 *_parcial.json
 trayectorias_*.jsonl
 resultado_qwen3.6-35b*.json
@@ -12,6 +12,9 @@ resultado_diag-trampas*.json
 resultado_paq-buscar-de*.json
 bateria*.log
 
-# Arneses retirados
+# Working copies of another repo (aios-agent is already public): they stay local
+auditoria/aios-agent/
+
+# Retired harnesses
 bateria/bateria_v2.py
 diag_trampas.json

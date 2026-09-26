@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
-"""Ejecutor de herramientas contra el oraculo de AIOS.
+"""Tool executor against the AIOS oracle.
 
-Es la pieza que convierte el banco de evaluacion en algo que MIDE DE VERDAD: en
-vez de comparar el comando del modelo con un patron, lo EJECUTA en una copia
-desechable de AIOS y le devuelve al modelo la salida real.
+This is the piece that turns the bench into something that REALLY MEASURES: instead
+of comparing the model's command against a pattern, it EXECUTES it in a throwaway
+copy of AIOS and returns the real output to the model.
 
-Dos decisiones de diseno, y las dos importan:
+Two design decisions, and both of them matter:
 
-1. LA CAPA DE SEGURIDAD SE APLICA. Antes de ejecutar nada se llama a
-   `verificar_comando` de aios-agent, igual que hace `run_command` en produccion.
-   Asi el modelo recibe el MISMO "no" que recibiria de verdad, y el banco mide la
-   conducta real, no una ideal. Ademas, si el modelo intenta rodear el bloqueo,
-   se ve en la trayectoria.
+1. THE SECURITY LAYER IS APPLIED. Before running anything, `verificar_comando` from
+   aios-agent is called, exactly as `run_command` does in production.
+   That way the model receives the SAME "no" it would really get, and the bench
+   measures real behaviour, not an ideal one. On top of that, if the model tries to
+   go around the block, it shows in the trajectory.
 
-2. EL COMANDO VIAJA COMO FICHERO, no dentro de una cadena de shell. El oraculo
-   hace `bash -c "... $* ..."`, asi que un comando con comillas lo romperia. Se
-   escribe en $MERGED/tmp/ (que dentro del chroot es /tmp) y se ejecuta con `sh`.
+2. THE COMMAND TRAVELS AS A FILE, not inside a shell string. The oracle
+   does `bash -c "... $* ..."`, so a command with quotes would break it. It is
+   written to $MERGED/tmp/ (which inside the chroot is /tmp) and run with `sh`.
 """
 import json
 import os
@@ -29,7 +29,7 @@ PASO = os.path.join(MERGED, "tmp", "aios-paso.sh")
 
 
 def _dir_agente():
-    """Encuentra aios-agent. Bajo sudo, ~ es /root, asi que no vale expanduser."""
+    """Finds aios-agent. Under sudo, ~ is /root, so expanduser is no good."""
     if os.environ.get("AIOS_AGENT_DIR"):
         return os.environ["AIOS_AGENT_DIR"]
     candidatos = []
@@ -47,7 +47,7 @@ AIOS_AGENT = _dir_agente()
 
 
 def _capa():
-    """La capa de seguridad real de aios-agent (importada, no reimplementada)."""
+    """The real security layer of aios-agent (imported, not reimplemented)."""
     if "_capa_cache" not in globals():
         sys.path.insert(0, AIOS_AGENT)
         import importlib.util
@@ -67,12 +67,12 @@ def _oraculo(*args, timeout=120):
 
 
 def sesion_iniciar():
-    """Monta el oraculo. Idempotente: si ya esta montado, no hace nada."""
+    """Brings the oracle up. Idempotent: if it is already up, it does nothing."""
     _oraculo("setup")
 
 
 def sesion_terminar():
-    """Tira la capa desechable. Es el reset: 0,17 s."""
+    """Tears down the throwaway layer. This is the reset: 0.17 s."""
     _oraculo("reset")
 
 
@@ -81,17 +81,17 @@ FIN = "@@AIOS-FIN@@"
 
 
 def _ejecutar_en_oraculo(comando: str, timeout=60) -> str:
-    """Ejecuta un comando dentro del oraculo y devuelve SU salida, solo la suya.
+    """Runs a command inside the oracle and returns ITS output, only its own.
 
-    CUIDADO con adivinar donde empieza la salida. La version anterior descartaba
-    las lineas que empezaban por el caracter de marco "|" para quitarse de en
-    medio los log del oraculo... y con ello BORRABA la salida entera de `sven`,
-    cuyo banner empieza justo asi. El efecto medido, y es grave: el modelo pedia
-    `get_installed_info`, recibia vacio, e improvisaba con `dpkg` -- un comando
-    que no existe en AIOS. El fallo de dominio lo provocaba el instrumento, y esa
-    trayectoria habria entrado en el dataset como si fuera del modelo.
+    BEWARE of guessing where the output starts. The previous version discarded the
+    lines beginning with the frame character "|" to get the oracle logs out of
+    the way... and with that it WIPED OUT the whole output of `sven`, whose banner
+    starts exactly like that. The effect measured, and it is serious: the model asked
+    for `get_installed_info`, got back nothing, and improvised with `dpkg` -- a command
+    that does not exist in AIOS. The domain failure was caused by the instrument, and
+    that trajectory would have entered the dataset as if it were the model's.
 
-    Ahora el paso lleva marcadores explicitos y solo se recoge lo de dentro.
+    Now the step carries explicit markers and only what is inside them is collected.
     """
     guion = "#!/bin/sh\necho '%s'\n%s\necho '%s'\n" % (INI, comando, FIN)
     try:
@@ -103,8 +103,8 @@ def _ejecutar_en_oraculo(comando: str, timeout=60) -> str:
         return "(no pude preparar el paso: %s)" % e
 
     out, _ = _oraculo("run", "--", "sh /tmp/aios-paso.sh", timeout=timeout)
-    # sven y docker emiten color; produccion lo limpia con _strip_ansi, asi que el
-    # modelo en el banco tiene que ver lo mismo que en produccion.
+    # sven and docker emit color; production cleans it with _strip_ansi, so the
+    # model on the bench has to see the same as in production.
     out = _capa()._strip_ansi(out)
     m = re.search(re.escape(INI) + r"\s*\n(.*?)\n?" + re.escape(FIN), out, re.S)
     texto = (m.group(1) if m else out).strip()
@@ -112,7 +112,7 @@ def _ejecutar_en_oraculo(comando: str, timeout=60) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Herramientas que SI se pueden ejecutar en el oraculo
+# Tools that CAN be executed in the oracle
 # ──────────────────────────────────────────────────────────────────────────────
 def _t_run_command(args):
     cmd = args.get("command", "")
@@ -122,7 +122,7 @@ def _t_run_command(args):
                            "exit_code": -1, "stdout": "",
                            "stderr": "Blocked for security reasons"}, ensure_ascii=False)
     if veredicto == "confirma":
-        # En el banco no hay humano que confirme. Se rechaza, como hace el modo voz.
+        # On the bench there is no human to confirm. It is rejected, as voice mode does.
         return json.dumps({"error": "NEEDS PERMISSION: this command changes system software "
                                     "or is destructive. Ask the user out loud and wait for a "
                                     "clear yes before running it.",
@@ -148,7 +148,7 @@ def _t_write_file(args):
     if any(ruta.startswith(z) for z in zonas):
         return json.dumps({"warning": "System path. Write blocked.", "path": ruta},
                           ensure_ascii=False)
-    # el contenido viaja en el mismo fichero de paso, entre marcadores
+    # the content travels in the same step file, between markers
     guion = ("cat > %s <<'AIOS_EOF'\n%s\nAIOS_EOF\necho escrito" % (_q(ruta), contenido))
     salida = _ejecutar_en_oraculo(guion)
     return json.dumps({"ok": "escrito" in salida, "path": ruta, "size": len(contenido),
@@ -191,7 +191,7 @@ def _t_identity_guardar(args):
 
 
 def _q(s):
-    """Entrecomilla un valor para el shell del oraculo."""
+    """Quotes a value for the oracle's shell."""
     return "'" + str(s).replace("'", "'\\''") + "'"
 
 
@@ -208,8 +208,8 @@ EJECUTABLES = {
                                           ensure_ascii=False),
 }
 
-# Herramientas que NO se pueden ejecutar aqui, y por que. Se le dice al modelo con
-# la verdad en vez de inventarle una salida falsa.
+# Tools that CANNOT be executed here, and why. The model is told the truth instead
+# of having a fake output made up for it.
 NO_DISPONIBLES = {
     "screenshot": "No hay servidor grafico (DISPLAY) en este entorno de pruebas.",
     "ocr": "No hay servidor grafico ni imagen capturada en este entorno.",
@@ -235,7 +235,7 @@ NO_DISPONIBLES = {
 
 
 def ejecutar(nombre: str, args: dict) -> str:
-    """Ejecuta una herramienta y devuelve su resultado como cadena JSON."""
+    """Runs a tool and returns its result as a JSON string."""
     if nombre in EJECUTABLES:
         try:
             return EJECUTABLES[nombre](args or {})
@@ -251,13 +251,13 @@ def ejecutar(nombre: str, args: dict) -> str:
 
 
 if __name__ == "__main__":
-    # prueba de humo del propio ejecutor
+    # smoke test of the executor itself
     sesion_iniciar()
-    print("1. lectura real   :", ejecutar("read_file", {"path": "/etc/os-release"})[:150])
-    print("2. comando real   :", ejecutar("run_command", {"command": "sven version | head -2"})[:200])
-    print("3. bloqueado      :", ejecutar("run_command", {"command": "rm -rf /"})[:130])
-    print("4. permiso        :", ejecutar("run_command", {"command": "sven install curl"})[:130])
-    print("5. escritura /tmp :", ejecutar("write_file", {"path": "/tmp/prueba.txt", "content": "hola"}))
-    print("6. lectura de eso :", ejecutar("read_file", {"path": "/tmp/prueba.txt"})[:120])
-    print("7. escritorio     :", ejecutar("screenshot", {})[:130])
+    print("1. real read      :", ejecutar("read_file", {"path": "/etc/os-release"})[:150])
+    print("2. real command   :", ejecutar("run_command", {"command": "sven version | head -2"})[:200])
+    print("3. blocked        :", ejecutar("run_command", {"command": "rm -rf /"})[:130])
+    print("4. permission     :", ejecutar("run_command", {"command": "sven install curl"})[:130])
+    print("5. write /tmp     :", ejecutar("write_file", {"path": "/tmp/prueba.txt", "content": "hola"}))
+    print("6. read it back   :", ejecutar("read_file", {"path": "/tmp/prueba.txt"})[:120])
+    print("7. desktop        :", ejecutar("screenshot", {})[:130])
     sesion_terminar()
