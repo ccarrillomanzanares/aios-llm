@@ -1,0 +1,17 @@
+# Artefactos de Python
+__pycache__/
+*.pyc
+
+# Salidas de las corridas: NO se versionan (se regeneran y pesan)
+# La evidencia del numero medido SI: resultado_35b-multipaso-repuntuado.json y multi.log
+*_parcial.json
+trayectorias_*.jsonl
+resultado_qwen3.6-35b*.json
+resultado_35b-v2*.json
+resultado_diag-trampas*.json
+resultado_paq-buscar-de*.json
+bateria*.log
+
+# Arneses retirados
+bateria/bateria_v2.py
+diag_trampas.json
