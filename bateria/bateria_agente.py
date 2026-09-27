@@ -58,11 +58,17 @@ def leer_clave_api():
     return None
 
 
-def preguntar(url, clave, modelo, mensajes, tools, timeout=240):
-    """One round of conversation. Returns the assistant message as is."""
+def preguntar(url, clave, modelo, mensajes, tools, timeout=240, extra=None):
+    """One round of conversation. Returns the assistant message as is.
+
+    `extra` is merged into the request body as is. It exists to measure
+    variations WITHOUT touching anything else (turning the thinking off is one).
+    """
     import urllib.request
     cuerpo = {"model": modelo, "messages": mensajes, "tools": tools,
               "tool_choice": "auto", "temperature": 0.0, "max_tokens": 900}
+    if extra:
+        cuerpo.update(extra)
     peticion = urllib.request.Request(url.rstrip("/") + "/v1/chat/completions",
                                       data=json.dumps(cuerpo).encode("utf-8"))
     peticion.add_header("Content-Type", "application/json")
@@ -144,7 +150,8 @@ def evaluar(caso, idioma, texto, args, prompt, tools, capa, clave):
     ejecutor.sesion_iniciar()
     try:
         for _ in range(MAX_TURNOS):
-            msg = preguntar(args.url, clave, args.modelo, mensajes, tools)
+            msg = preguntar(args.url, clave, args.modelo, mensajes, tools,
+                            extra=getattr(args, "extra_peticion", None))
             tcs = msg.get("tool_calls") or []
             respuesta_texto = (msg.get("content") or "").strip()
             mensajes.append({"role": "assistant", "content": msg.get("content") or "",
@@ -198,10 +205,17 @@ def main():
     ap.add_argument("--etiqueta", default="multipaso")
     ap.add_argument("--json-salida", default=None)
     ap.add_argument("--sin-trayectorias", action="store_true")
+    ap.add_argument("--prompt", default="prompt_produccion.txt",
+                    help="which system prompt file to use (default: production)")
+    ap.add_argument("--sin-thinking", action="store_true",
+                    help="turn the model's thinking off (chat_template_kwargs)")
     args = ap.parse_args()
 
+    args.extra_peticion = ({"chat_template_kwargs": {"enable_thinking": False}}
+                           if args.sin_thinking else None)
+
     banco = _cargar("casos.json")
-    prompt = open(os.path.join(BASE, "prompt_produccion.txt"), encoding="utf-8").read()
+    prompt = open(os.path.join(BASE, args.prompt), encoding="utf-8").read()
     tools = _cargar("tools.json")
     capa = ejecutor._capa()
     clave = leer_clave_api()
@@ -223,7 +237,7 @@ def main():
     print("MULTI-STEP BENCH OF aios-llm    label: %s" % args.etiqueta)
     print("=" * 96)
     print("endpoint      : %s   (key: %s)" % (args.url, "yes" if clave else "no"))
-    print("system prompt : %d chars (identical to production)" % len(prompt))
+    print("system prompt : %d chars (%s)" % (len(prompt), args.prompt))
     print("tools         : %d" % len(tools))
     print("evaluations   : %d cases x %d languages = %d  (up to %d steps each)"
           % (len(casos), len(idiomas), len(casos) * len(idiomas), MAX_TURNOS))
