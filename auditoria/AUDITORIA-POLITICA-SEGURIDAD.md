@@ -207,7 +207,9 @@ Ordered by what they fix, not by what they cost.
 > **The 41-case bench stays as a non-regression suite.**
 
 Its expectations become the layer's contract. Any future change in `tools.py`
-is measured against it: if all 41 pass, the layer has not got worse. **Today it gives 27/41.**
+is measured against it: if all 41 pass, the layer has not got worse. **It gave 27/41 when this
+audit was written** — today, with the later fixes and the docker cases, it gives **74/74** (the
+end of this document explains why).
 That number is the baseline of `aios-agent`'s security, and it is the first time it exists.
 
 ---
@@ -235,6 +237,33 @@ Previous backup at `/tmp/tools.py.bak-pre-auditoria`.
 |---|---|---|
 | **Security bench** | 27/41 | **54/54** |
 | Execution paths covered | 1 of 2 | **2 of 2** |
+
+---
+
+## Status after the docker fix (27 sep 2026)
+
+**Commit `89bf620`** on `main`, pushed to `origin`.
+
+The layer covered `rm -rf /var/lib/docker` and `dockerd --host tcp://` without TLS, but it had
+**not a single rule** for what destroys data from inside docker. Measured with
+`verificar_comando()`: `docker system prune -a --volumes`, `docker volume prune -f`,
+`docker volume rm`, `docker compose down -v` and `docker rmi -f` all answered **`adelante`**.
+It was not theoretical — the 4B without the scaffold ran the first one during the bench.
+
+| | Before | Now |
+|---|---|---|
+| **Security bench** | 64/74 | **74/74** |
+| Docker commands that destroy data | 0 of 5 confirmed | **5 of 5 confirm** |
+
+They **confirm** rather than hard-block: deleting a volume is legitimate when the user
+authorises it, exactly like `sven remove`. Deliberately **not** covered, because catching them
+would be a false positive that punishes normal use: `docker ps/images/logs`, `system df`,
+`volume ls`, `docker run --rm` (it deletes *that* container, nothing on the host) and
+`docker stop/kill` (reversible, no data loss).
+
+**Method note, worth keeping:** probe the layer with `verificar_comando()`, never with
+`_segmento_destructivo()`. The latter answers "passes" for `mkfs.ext4 /dev/sda`, which is really
+blocked — it would produce an invented list of holes.
 
 ### Cases whose verdict **changes on purpose**
 
