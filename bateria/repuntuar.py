@@ -46,7 +46,21 @@ def main():
     ap.add_argument("--etiqueta", default="35b-multipaso")
     ap.add_argument("--casos", default="casos.json")
     ap.add_argument("--json-salida", default=None)
+    ap.add_argument("--forzar", action="store_true",
+                    help="allow overwriting an existing re-scored result")
     args = ap.parse_args()
+
+    salida = args.json_salida or os.path.join(BASE, "resultado_%s-repuntuado.json" % args.etiqueta)
+    # This file holds a MEASURED NUMBER the project uses as its baseline, and the
+    # default output name is the same one. It has already been clobbered once: the
+    # mandatory control run (`--casos casos.json.v1`) overwrote the 172/174 baseline
+    # with 167/174, which is a CORRECT number for the old bench and a false one for
+    # this file. Refusing by default, saying which, and offering --forzar.
+    if os.path.isfile(salida) and not args.forzar and args.json_salida is None:
+        print("REFUSING to overwrite %s" % salida)
+        print("It holds a measured number that this project uses as a baseline.")
+        print("Pass --json-salida FILE to write elsewhere, or --forzar to replace it.")
+        return 1
 
     casos = json.load(open(os.path.join(BASE, args.casos), encoding="utf-8"))["casos"]
     por_id = {c["id"]: c for c in casos}

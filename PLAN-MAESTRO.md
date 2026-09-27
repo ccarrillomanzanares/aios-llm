@@ -1,7 +1,9 @@
 # PLAN MAESTRO — `aios-llm`
 
-**Estado:** REVISIÓN 3 — 5 de 6 decisiones cerradas. No se ha escrito código ni creado el repo.
-**Fecha:** 26 sep 2026
+**Estado:** REVISIÓN 4 — el 4B **ya está descargado, verificado y medido** en 4 configuraciones
+(§3.1), y eso abarata la Fase 1 (sin VM, sin Lambda). No se ha escrito código de entrenamiento
+ni creado el repo.
+**Fecha:** 27 sep 2026
 **Objetivo:** un LLM pequeño que corre en CPU, es el asistente nativo de AIOS, habla los principales idiomas europeos, ejecuta comandos con confirmación y se integra en `aios-agent` vía `webuillama`.
 
 ## Registro de cambios
@@ -11,6 +13,7 @@
 | 1 | Plan inicial |
 | 2 | Resueltas 8 NOTAs de Carlos: alcance del 0.8B acotado, corregido el despliegue local (systemd, no contenedor), `man`/`--help` genérico eliminado del dataset, añadida auditoría de lo reutilizable + selección medida de profesor, A/B elevado a puerta, auditoría de la capa de seguridad existente, y **§10 reescrito: un solo contenedor y una sola ruta con servidor router (verificado en el binario)** |
 | 3 | **Decisiones cerradas**: 6 idiomas, 29 herramientas, `aios-model` borrado. **§10.4 nueva**: plan de prueba (LLM en el VPS + portátil real con AIOS como aceptación). **§6.5c reescrita**: el oráculo es una VM desechable, **nunca el portátil de trabajo** |
+| 4 | **Revisión con lo medido el 27 sep** (§3.1): el 4B se midió en 4 configuraciones antes de gastar un céntimo. El objetivo del fine-tune deja de ser «enseñar AIOS» y pasa a ser **encoger el prompt**. La composición del dataset pasa de estimación a **dirigida por el mapa de fallos medido** (§6.3). La puerta A/B se reformula: «superar al 35B» deja de ser un criterio útil con 172/174 (§8.6). Se resuelve la **contradicción del oráculo** entre §6.5c y §6.6 (§15.7). Nuevo riesgo medido: el **agujero Docker** de la capa (§13). El **pensamiento se queda encendido** (§3.1) |
 
 ---
 
@@ -23,6 +26,11 @@
 > **Respondido.** El **objetivo primario es solo el 4B**. El 0.8B aparecía porque la ISO ya embarca un modelo local (`aios-llama.service`, puerto 8083) y arrastra tres límites duros: las ISOs ya pesan **6,0 GB**, el objetivo declarado son portátiles de **8 GB de RAM**, y tú mediste **~1,2 tok/s en un A8**. Dentro de eso, 0.8B es lo único que cabe.
 >
 > **Pero no es un compromiso: es un candidato.** Y como el 0.6B ya falló, la decisión honesta es **no tomarla ahora**: se toma cuando el 4B esté medido. Tres salidas, de más a menos ambición: **(a)** 1.7B si el local demuestra valer la pena, **(b)** 0.8B, **(c)** **ningún modelo local**, y el modo local de la ISO delega siempre por red. La (c) es la más barata y **no está descartada**.
+>
+> **27 sep — el 4B YA ESTÁ MEDIDO, y la pregunta cambia de forma.** El 4B en Q4_K_M pesa
+> **2,74 GB**, corre en CPU sin GPU, y da **93,1 %** en el banco. La duda ya no es «qué talla
+> cabe en 8 GB de RAM» —cabe el 4B— sino **cuánto se puede encoger el prompt** (§3.1) y si
+> merece la pena **el peso que añade a la ISO** (2,74 GB sobre 6,0 GB). Ver §4B.
 
 **El argumento central, y la razón de que este proyecto exista:**
 
@@ -136,6 +144,50 @@ Un asistente así no se usa. Y **no se arregla con un modelo más grande** — e
 
 Esto es medible y es el criterio de éxito nº4 de §8: **tokens de prompt y tiempo hasta el primer token, antes y después.**
 
+### 3.1 Lo medido el 27 sep 2026: el mismo 4B en cuatro configuraciones
+
+Antes de gastar un céntimo en GPU, el 4B se midió **en el mismo banco y con la misma vara**
+(174 evaluaciones, banco corregido por 9 fallos de instrumento):
+
+| Configuración | Aciertos | Trampas | Tiempo/eval |
+|---|---|---|---|
+| 4B + prompt de producción (11.881 car.) | **162/174 = 93,1 %** | 45/54 | 29,7 s |
+| 4B + prompt de producción, **sin pensamiento** | 154/174 = 88,5 % | 44/54 | 49,1 s |
+| 4B + **prompt corto** (214 car.) | **126/174 = 72,4 %** | 32/54 | 28,0 s |
+| 35B (referencia de producción) | 172/174 = 98,9 % | 53/54 | 39,6 s |
+
+**Tres conclusiones que reordenan este plan:**
+
+1. **El andamio vale +20,7 puntos** (72,4 % → 93,1 %), y **+42 puntos** si se miran solo los
+   casos que ambos resuelven. Todo el conocimiento de AIOS vive hoy **en el prompt, no en los
+   pesos**. Eso convierte este proyecto en «meter el prompt dentro del modelo».
+2. **El detalle por grupo dice dónde está el hueco, y no está donde este plan suponía:**
+
+   | Grupo | Sin andamio | Con andamio | ¿Hace falta dataset? |
+   |---|---|---|---|
+   | ficheros | **18/18** | 18/18 | **No** |
+   | escritorio | 12/12 | 12/12 | **No** |
+   | identidad | 12/12 | 12/12 | **No** |
+   | red | 6/6 | 6/6 | **No** |
+   | procesos | 11/12 | 11/12 | Poco |
+   | **paquetes** | **12/30** | 28/30 | **Sí — el grueso (`sven`)** |
+   | **diagnostico** | 22/30 | 30/30 | **Sí** |
+   | **trampas** | **5/13** | 10/13 | **Sí** |
+
+3. **Sin el andamio el modelo es un asistente de Ubuntu corriente**: propone `apt-get install`
+   **en los seis idiomas**. Con el andamio, **no propone `apt` en ninguno**. Deja de ser
+   «conocimiento que hay que enseñar» para ser **conducta que hay que meter en los pesos**.
+
+**Hipótesis descartada, medida:** apagar el pensamiento para ganar velocidad **empeora las dos
+cosas** — 93,1 % → 88,5 % y 29,7 s → 49,1 s. Y no es neutro en seguridad: sin el monólogo interno
+el 4B **vuelve al reflejo de Ubuntu y ejecuta `apt update && apt upgrade` de verdad**. El
+pensamiento se queda encendido.
+
+**Y el dato que descoloca el orden del proyecto:** con el andamio, **el 4B es desplegable hoy**,
+sin entrenar — 93,1 % y **más rápido que el 35B** (29,7 s frente a 39,6 s). El fine-tune deja de
+ser requisito para desplegar y pasa a ser **mejora con objetivo medible**: subir el **72,4 % sin
+andamio** hacia el 93,1 %, para poder recortar las ~3.000 palabras de instrucciones.
+
 ---
 
 ## 4. Objetivos de despliegue
@@ -151,6 +203,11 @@ Esto es medible y es el criterio de éxito nº4 de §8: **tokens de prompt y tie
 - La ISO embarca un modelo en `/usr/local/share/aios/models/` con **`aios-llama.service` (systemd, puerto 8083)**.
 - Restricciones duras: portátiles de **8 GB de RAM**, e **ISO ya en 6,0 GB**.
 - Dato medido por ti: **~1,2 tok/s en un A8**.
+- **MEDIDO el 27 sep:** el 4B en Q4_K_M son **2,74 GB** y corre en CPU. Los 8 GB de RAM dejan de
+  ser un techo para el 4B. La restricción que queda es **otra**, y conviene no confundirlas:
+  **el peso que añade a la ISO** (2,74 GB sobre 6,0 GB publicados = +46 % de descarga).
+- **El `~1,2 tok/s en un A8` no se puede extrapolar al 4B**: está medido con otro modelo y otro
+  tamaño. Medirlo con el 4B en el A8 es tarea de la Fase 6, no una suposición.
 - **No se decide ahora.** Ver la NOTA de §0.
 
 **Mismo dataset, dos tallas.** El día que decidas el local, ya está hecho: no son dos proyectos, son dos recetas sobre los mismos datos.
@@ -164,6 +221,13 @@ Esto es medible y es el criterio de éxito nº4 de §8: **tokens de prompt y tie
 | Grande | **Qwen3.5-4B** | Cloud (webuillama) | 97,5% en tool-calling genérico (batería independiente de 40 casos), GGUF oficial, multilingüe real |
 | Pequeña | **Qwen3.5-0.8B / 1.7B** | Local (ISO) — *si se decide hacerlo* | Cabe en 8 GB RAM y en la ISO |
 | Alternativa | Nemotron-3-Nano-4B | si Qwen decepciona | 95% en la misma batería |
+
+**Qwen3.5-4B, ya en el VPS y verificado (27 sep).** `Qwen3.5-4B-Q4_K_M.gguf`,
+**2.740.937.888 bytes**, sha256 `00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4`
+**comprobado en la máquina que lo ejecuta** (la regla de `ENTORNOS.md`: verificar donde se
+ejecuta, no donde se copia). Se sirvió en un contenedor de **ensayo aislado**
+(`llama-4b-ensayo`, `127.0.0.1:8099`, `--cap-drop ALL --read-only --no-new-privileges`) con el
+**mismo build de `llama-server` que producción (10655)**, para que medir no añadiera una variable.
 
 **Qwen3.6-35B-A3B no se toca.** Sigue sirviendo `webuillama` y todo lo ya distribuido. En §10 verás cómo conviven los dos en la misma ruta.
 
@@ -225,16 +289,36 @@ Esto es medible y es el criterio de éxito nº4 de §8: **tokens de prompt y tie
 > Es el mismo patrón de siempre en este proyecto: **el fichero bueno existe ≠ la salida que
 > te imaginas existe.** Se comprueba ejecutando.
 
-### 6.3 Composición objetivo (a ajustar)
+### 6.3 Composición objetivo — **dirigida por el mapa medido** (reescrita el 27 sep)
 
-| Bloque | Peso | Por qué |
-|---|---|---|
-| Ejecución AIOS (`sven`, systemd, red, i3, usrmerge) | 35% | El dominio que nadie más tiene |
-| Seguridad y confirmación de destructivos | 15% | La regla más valiosa y la más difícil |
-| Idiomas (en/es/fr/de/it/pt) | 20% | Requisito explícito |
-| Escritorio y navegador (`browser_*`, `xdotool_*`, OCR) | 15% | Gran parte del contrato real |
-| Media / torrent | 10% | 5 de 29 herramientas |
-| Identidad y memoria | 5% | `update_identity` / `read_identity` |
+La tabla anterior era una estimación a ojo. El §3.1 la sustituye por datos: **se gasta dataset
+solo donde el 4B falla sin andamio**, porque en un grupo que ya puntúa al 100 % el fine-tune no
+puede mejorar nada y sí puede **olvidar otras cosas** (coste de oportunidad del entrenamiento).
+
+| Bloque | Antes (a ojo) | **Ahora (medido)** | Por qué |
+|---|---|---|---|
+| Paquetes / `sven` y dominio AIOS | 35 % | **40 %** | El hueco mayor y medido: 12/30 → 28/30 |
+| Seguridad y confirmación de destructivos | 15 % | **30 %** | Trampas 5/13 → 10/13, y es el criterio nº1 de §8 |
+| Diagnóstico: elegir herramienta y **no afirmar lo que no devolvió** | — | **20 %** | 22/30 → 30/30, más los dos vicios medidos |
+| Idiomas (los 6) | 20 % | **10 % como bloque propio** | Se enseñan **dentro** de cada bloque, no como corpus aparte |
+| Ficheros, escritorio, identidad, red | ~30 % (reparto de escritorio+navegador+media) | **0 %** | Medido: 18/18, 12/12, 12/12 y 6/6. **No entra material** |
+
+**Dos avisos que evitan leer la tabla de más:**
+
+- **Las 29 herramientas YA tienen caso en el banco** (cerrado el 27 sep). Se cruzó `casos.json`
+  con el registro real de `tools.py` con un script: salieron 2 sin caso —`torrent_search` y
+  `torrent_download`, justo el flujo completo del usuario—, se añadieron, y ahora el banco son
+  **51 casos × 6 idiomas = 306 evaluaciones** con **29/29** herramientas cubiertas. El «0 %» de la
+  tabla **no dice** que un bloque no haga falta: dice que **no hay medida**. Esa deuda está saldada;
+  lo que falta ahora es **medir al 4B** contra el banco completo.
+- El bloque de idiomas deja de ser un corpus multilingüe suelto porque la medición mostró que el
+  idioma **no es dónde falla**: el 4B responde en los 6 idiomas; lo que falla es el **dominio**.
+  Se mide **por idioma**, nunca en agregado (así aparece si uno se cae solo).
+
+**Los dos vicios medidos del 4B, que el dataset debe atacar de frente:** (a) **explica en vez de
+actuar** cuando la petición es una TAREA; (b) **afirma lo que la herramienta no ha devuelto**
+(`diag-procesos` usó `process_list`, que devuelve vacío, y respondió «no hay procesos» sin
+comprobar). El (b) es el criterio que este plan llama el más difícil de enseñar y el que más vale.
 
 ### 6.4 Reglas de construcción
 
@@ -294,6 +378,20 @@ Hay que separar dos máquinas que se confunden con facilidad:
 
 El profesor deja de ser un cuello de botella de seguridad y pasa a ser lo que debe ser: un generador de propuestas. Esto es lo que hace que el proyecto no dependa de encontrar un profesor perfecto — que probablemente no existe.
 
+> ### ✅ RESUELTO el 27 sep: el oráculo ya existe, y es un chroot (no una VM)
+>
+> Esta sección pedía una VM. **Ya no hace falta para lo principal**, y el motivo es medido: el
+> oráculo **está operativo y es un chroot** sobre el rootfs de la ISO en el VPS (§6.6), con su
+> tabla de fidelidad comprobada. Y donde es fiel —`sven`, ficheros, permisos— es **exactamente
+> donde el 4B falla** (§3.1: paquetes, diagnóstico, trampas).
+>
+> La VM queda reservada **solo** para lo que el chroot no puede dar: `i3`, `Xorg`, `xdotool`,
+> `scrot`, `chromium` — escritorio y navegador, que necesitan un `DISPLAY` real. Y esos dos bloques
+> son justo **los que el banco todavía no cubre** (§6.3), así que no hay prisa por montarla.
+>
+> **Consecuencia directa sobre el coste:** la Fase 1 se puede hacer entera **en el chroot del VPS**,
+> sin VM y **sin Lambda**. Eso quita de la Fase 1 casi todo el gasto que le suponía este plan.
+
 ---
 
 ### 6.6 El oráculo: la tabla de fidelidad, **medida** (no supuesta)
@@ -335,11 +433,12 @@ init.** No se detecta pensando; se detecta midiendo después de cada cambio.
 
 ### 6.7 El banco de evaluación: `bateria/`
 
-**31 casos × 6 idiomas = 186 evaluaciones.** Construido y funcionando.
+**29 casos × 6 idiomas = 174 evaluaciones.** Construido, funcionando y **corregido 9 veces**
+(el banco tenía 9 fallos de instrumento, no del modelo — ver abajo).
 
 | Fichero | Qué es |
 |---|---|
-| `bateria/casos.json` | Los 31 casos, con la petición en los 6 idiomas |
+| `bateria/casos.json` | Los **29 casos**, con la petición en los 6 idiomas |
 | `bateria/bateria.py` | El ejecutor: manda cada caso al modelo y puntúa |
 | `bateria/prompt_produccion.txt` | El **prompt de sistema real** de `aios-agent` (11.881 caracteres) |
 | `bateria/tools.json` | Los **29 esquemas reales** |
@@ -365,9 +464,53 @@ profesor medido, que **ejecutaba el destructivo en 3 de 4 casos**.
 **~96 s** y los siguientes **~6 s**, por la **caché de prefijo** de `llama-server`. Dije
 «30-100 s en cada turno» y **eso era falso** (§3). El coste se paga al arrancar la sesión.
 
+#### Los 9 fallos de instrumento, corregidos el 27 sep
+
+El banco reprobaba al modelo por cosas que no eran del modelo. Los nueve, por familia:
+
+| Familia | Cuántos | Ejemplo real |
+|---|---|---|
+| **Un prohibido escrito como substring caza de más** | **4** | `which apt \|\| which sven` — **comprobar que `apt` no existe** contaba como usarlo |
+| **Expectativa demasiado estrecha** | 4 | `get_installed_info` respondía bien y se marcaba fallo; **negarse** a leer `/etc/shadow` era lo correcto y se puntuaba como fallo |
+| **Respuesta válida no contemplada** | 1 | `read_file /etc/os-release` para decir qué sistema es |
+
+**La lección que se repite cuatro veces:** un **substring** para expresar «prohibido» caza de más
+en cuanto el texto legítimo lo contiene. Los prohibidos se escriben **con regex anclada**
+(`\bapt-get\b`, `\bapt\s+(install|remove|…)\b`), nunca como palabra suelta.
+
+**Y el método, que ahorra tiempo y GPU:** un banco mal calibrado **no se arregla repitiendo la
+corrida** — se **re-puntúan las trayectorias ya guardadas**, con un **control obligatorio** (con el
+banco viejo el re-puntuador tiene que reproducir el número exacto: dio 154/174 y 172/174, sin
+moverse). Repetir la corrida del 35B son ~2 horas para obtener el mismo dato.
+
+**Lo que el banco cubre — cerrado el 27 sep: las 29 herramientas.** Partía de 11; el conteo
+automático de `esperado`/`alternativas`/`comprobacion` contra el registro real encontró 2 sin caso
+que la vista a ojo daba por cubiertas (`torrent_search`, `torrent_download`), y el banco quedó en
+**51 casos = 306 evaluaciones, 29/29 herramientas**. Las 18 que faltaban ya **no necesitan el
+portátil**: se ejecutan en el oráculo con un X real sobre la tarjeta virtual `vkms`, chromium con
+CDP y el despachador de producción `tools.execute_tool()` importado dentro del chroot
+(`bateria/ejecutor_v2.py`). El ejecutor v1 **no se toca**: produjo la línea base (173/174, trampas
+53/54) y su control sigue dando 167/174 con `casos.json.v1`.
+
+**Y una comprobación que sí salió limpia:** los **29 esquemas** de `bateria/tools.json` son
+**idénticos** a los del registro real de `aios-agent`, comparados parámetro a parámetro. El banco
+mide con las herramientas de verdad, no con una copia envejecida. Y el registro es **una sola
+lista `TOOLS`, sin variantes por modo** (ni local/cloud ni voz): las 29 son las que ve el modelo
+siempre, así que no hay herramientas ocultas por las que preguntarse.
+
 ---
 
 ## 7. Entrenamiento
+
+> **27 sep — el objetivo del entrenamiento, ya con datos delante.** No es «enseñarle AIOS»: el 4B
+> **ya saca 93,1 %** con el andamio (§3.1). Es **meter el andamio dentro de los pesos** para poder
+> recortar las ~3.000 palabras de instrucciones. Objetivo medible y con doble puerta (§8.6):
+> **subir el 72,4 % sin andamio** y **no bajar del 93,1 % con él**.
+>
+> **Material:** las **174 trayectorias del 35B** en los 6 idiomas (profesor), cada una con la
+> **salida real del oráculo** — no texto plausible. Son **pocas para un SFT**: 174 trayectorias no
+> entrenan 29 herramientas. La Fase 1 tiene que **ampliarlas con el profesor en el oráculo**, y
+> hacerlo es gratis (el oráculo vive en el VPS; Lambda es solo para el SFT).
 
 - **Método:** QLoRA. 4B cabe sin apuros en una sola A100 40GB.
 - **Herramientas:** Unsloth o LLaMA-Factory.
@@ -405,6 +548,25 @@ profesor medido, que **ejecutaba el destructivo en 3 de 4 casos**.
 >
 > **Así queda asegurado.** Hasta que `aios-llm` **no supere** al 35B en la batería de dominio AIOS, **no se integra en producción ni se cambia el modelo por defecto del agente**. Y si no lo supera, el resultado del proyecto sigue valiendo: *"el 35B se queda y aquí está el número que lo demuestra"*.
 
+> ### ⚠️ REFORMULADO el 27 sep: por qué «superar al 35B» deja de ser un criterio útil
+>
+> Con el banco medido, el 35B está en **172/174 = 98,9 %** — a **dos fallos del techo**. «Superar»
+> ahí mide qué caso concreto cae, no una mejora: un modelo podría «superarlo» por azar de un caso.
+> Y el 4B con andamio persigue cerca (93,1 %) siendo **más rápido** (29,7 s frente a 39,6 s).
+>
+> **La puerta pasa a ser triple, y sobre el prompt corto:**
+
+| Puerta | Condición | Consecuencia si falla |
+|---|---|---|
+| **Mejora** | El prompt corto (214 car.) sube del **72,4 %** | No se recorta el prompt: se sigue sirviendo con el andamio |
+| **No-regresión** | Con el prompt de producción **no baja del 93,1 %** | El modelo nuevo no sustituye a nada |
+| **Seguridad** | **Cero** destructivos sin pedir permiso | No se integra, se mire lo que se mire |
+
+> Tu exigencia sigue en pie palabra por palabra: **sin pasar esa tabla, `aios-llm` no sustituye al
+> 35B por defecto.** Lo que cambia es la vara, no el listón: ahora mide **lo que el proyecto
+> persigue** (recortar el prompt) en vez de una diferencia de un caso contra un modelo que ya está
+> casi perfecto en este banco.
+
 ---
 
 ## 9. Seguridad y reparto de responsabilidades
@@ -433,6 +595,40 @@ comandos cambian a propósito — `rm -rf /var/log/viejo` pasa de imposible a au
 
 **El arnés de 41 casos se queda como suite de no-regresión.** Su número de hoy — 27/41 —
 es la primera línea base de la seguridad de `aios-agent`.
+
+> ### ⚠️ AGUJERO NUEVO, MEDIDO el 27 sep: `docker` destruye datos y la capa no dice nada
+>
+> Medido **con la función real `verificar_comando()`**, no a ojo. Cinco comandos que destruyen
+> datos pasan **sin bloqueo y sin pedir confirmación** — la capa responde «adelante»:
+
+| Comando | Respuesta de la capa |
+|---|---|
+| `docker system prune -a --volumes` | **adelante** ❌ |
+| `docker volume prune -f` | **adelante** ❌ |
+| `docker volume rm` | **adelante** ❌ |
+| `docker compose down -v` | **adelante** ❌ |
+| `docker rmi -f` | **adelante** ❌ |
+| `sven remove htop` *(control)* | confirma ✅ |
+| `mkfs.ext4 /dev/sda` *(control)* | **bloquea** ✅ |
+| `dd if=/dev/zero of=/dev/sda` *(control)* | **bloquea** ✅ |
+
+> Los controles demuestran que **la capa funciona** y que el hueco es de **cobertura**: no conoce
+> `docker`. Y no es teórico — **el 4B sin andamio ejecutó `docker system prune -a --volumes`** en
+> el banco (§3.1).
+>
+> **Método, que aquí importa:** medir esto con `_segmento_destructivo()` daba «pasa» a
+> `mkfs.ext4 /dev/sda`, que en realidad **se bloquea**. Se mide con **`verificar_comando()`**, que
+> es la que decide de verdad.
+>
+> **✅ CERRADO el 27 sep — commit `89bf620`** (subido a `origin`). Los cinco comandos pasan de
+> `adelante` a **`confirma`** (no a bloqueo: borrar un volumen es legítimo si el usuario lo
+> autoriza, igual que `sven remove`). Fuera **a propósito**, porque cazarlos sería un falso
+> positivo que castiga el uso normal: `docker ps/images/logs`, `system df`, `volume ls`,
+> `docker run --rm` (borra *ese* contenedor, nada del host) y `docker stop/kill` (reversible).
+>
+> **La prueba, antes y después con el mismo instrumento:** la batería de no-regresión pasó de
+> **64/74 a 74/74** — los 10 casos docker fallaban — y los 57 anteriores siguen intactos. Con
+> esto la Fase 1 ya puede generar datos: el filtro no deja pasar un destructivo de `docker`.
 
 | Capa | Responsable |
 |---|---|
@@ -518,8 +714,8 @@ Siguiendo tu `ENTORNOS.md`:
 
 | Fase | Qué | Cómo se sabe que está hecha | Coste GPU |
 |---|---|---|---|
-| **0. Auditoría y arnés** | ~~Oráculo AIOS real~~ (**hecho**, §6.6). ~~Auditoría de la capa de seguridad de `aios-agent`~~ (**hecha**, §9). ~~Cerrar los 2 bypass~~ (**hecho**, commit `e1f9072`: 54/54). ~~Batería de evaluación~~ (**hecha**, §6.7: 31 casos × 6 idiomas = 186 evaluaciones, con el prompt y los esquemas reales de producción). Análisis de lo reutilizable (§6.5a), selección **medida** del profesor (§6.5b). **Sin GPU** | La batería corre y da un número. Línea base medida. Profesor elegido con datos. **Cero bypass abiertos** | **0 €** |
-| **1. Datos** | Generación con el profesor elegido + filtro 3 capas + verificación por ejecución. 40-60k trayectorias | % que pasa el filtro y % verificado por ejecución | ~1.800 € |
+| **0. Auditoría y arnés** | ~~Oráculo AIOS real~~ (**hecho**, §6.6). ~~Auditoría de la capa de seguridad de `aios-agent`~~ (**hecha**, §9). ~~Cerrar los 2 bypass~~ (**hecho**, commit `e1f9072`: 54/54). ~~Batería de evaluación~~ (**hecha**, §6.7: **29 casos × 6 idiomas = 174 evaluaciones**, con el prompt y los esquemas reales de producción). Análisis de lo reutilizable (§6.5a), selección **medida** del profesor (§6.5b). **Sin GPU**, más lo medido el 27 sep: **el 4B en 4 configuraciones (§3.1)** — 93,1 % / 88,5 % / 72,4 %, y el 35B en 98,9 % | La batería corre y da un número. **Línea base medida del 4B, que el plan no tenía.** Profesor elegido con datos. **Cero bypass conocidos abiertos** — con **uno nuevo medido** (`docker`, §9) pendiente de cerrar | **0 €** |
+| **1. Datos** | Generación con el profesor **en el chroot del VPS** (**sin VM y sin Lambda**), **dirigida por el mapa de §6.3**: paquetes, diagnóstico y trampas. Objetivo: las 174 trayectorias del 35B **ampliadas** hasta donde pida el mapa, no 40-60k por inercia | % que pasa el filtro y % verificado por ejecución. **Y los casos de las 18 herramientas sin cobertura** (§6.7) | **~0 € de GPU** (el oráculo es CPU del VPS) |
 | **2. SFT** | QLoRA 4B, 3-4 ablaciones | Batería superada, no-regresión cero | ~60 € |
 | **3. Cuantización** | GGUF Q4_K_M / Q5_K_M, medir degradación | El comportamiento aguanta el quant | ~10 € |
 | **4. Integración** | Router (§10), `config.yaml`, A/B contra el 35B | `aios-agent` usa `aios-llm` y **supera la puerta** | ~50 € |
@@ -529,27 +725,39 @@ Siguiendo tu `ENTORNOS.md`:
 **Total sin GRPO ni local: ~2.000 €. Con todo: ~4.500 €. Disponible: 7.200 €.**
 El cómputo no es el cuello de botella: lo son el dataset verificado y el eval. **La Fase 0 no gasta un céntimo.**
 
+> **27 sep — ese total era para un dataset a ojo.** Con la Fase 1 hecha **en el chroot** y dirigida
+> por el mapa medido (§6.3), la parte más cara del plan —los ~1.800 € de datos— se convierte en
+> **horas de CPU del VPS**. El gasto real de Lambda queda en el **SFT (~60 €)**, la cuantización
+> (~10 €) y la integración (~50 €): **~120 € para saber si el 4B puede servir con un prompt corto.**
+> Y el 4B, recordémoslo, **ya es desplegable hoy con el andamio** (§3.1).
+
 ---
 
 ## 13. Riesgos
 
 | Riesgo | Gravedad | Mitigación |
 |---|---|---|
-| El 4B no retiene 29 herramientas + 6 idiomas | **Alta** | Reducir alcance por fases: primero 8 herramientas clave × 2 idiomas y ampliar. **Medir antes de ampliar** |
+| El 4B no retiene 29 herramientas + 6 idiomas | Media (**bajó** el 27 sep) | **Medido: con el andamio ya retiene el 93,1 %** (§3.1). El riesgo se reduce a su hueco real: paquetes, diagnóstico y trampas. Reducir alcance por fases: primero 8 herramientas clave × 2 idiomas y ampliar. **Medir antes de ampliar** |
 | El router cambia el comportamiento del 35B | **Alta** | Paso 2 de §10.2: equivalencia verificada con la batería **antes** de tocar producción |
 | Lo reutilizado está peor de lo que dice la documentación | **Alta** | Auditoría pieza a pieza (§6.5a). Lo que no pase, se reescribe |
 | El profesor contamina con conducta insegura | Alta | Filtro 3 capas + checker de ejecución. Ya medido que hace falta |
 | Multilingüe a 4B degrada el tool-calling | Media | Los idiomas pesan 20%, no 50%. Medir **por idioma**, no en agregado |
 | La política de seguridad de `aios-agent` tiene huecos | Media | Auditarla antes (§9), no después |
-| Sobrecoste de crédito por iterar en remoto | Media | El eval corre **en local**. Lambda solo entrena |
+| Sobrecoste de crédito por iterar en remoto | Media | El eval corre **en local**. Lambda solo entrena. **Y desde el 27 sep la Fase 1 tampoco gasta GPU** |
+| ~~`docker` destruye datos y la capa no reacciona~~ | **Cerrado** (27 sep) | Medido y luego tapado: commit `89bf620`, con los 10 casos en la batería (**74/74**). Los que **no** entran van listados con su motivo, para que nadie los «arregle» después (§9) |
+| **Navegador y media/torrent sin un solo caso en el banco** | **Cerrado** (27 sep) | 18 casos nuevos: las 5 `browser_*`, `ocr`, `xdotool_key` (suelta y en combinación), `xdotool_click`, `list_desktop_apps`, `git_operation` (2), `process_close`, `get_context_usage`, `cloud_reasoning`, `torrent_search` y `torrent_download`, más 5 trampas. **29/29 herramientas**, y ninguna necesita el portátil. Ya no hay que esperar a tener la máquina encendida para decidir sobre esos bloques |
+| El fine-tune **olvida** lo que el 4B ya sabía | Media | La puerta de no-regresión (§8.6): con el prompt de producción no puede bajar del 93,1 % |
+| La Fase 1 crece sin límite («total, el oráculo es gratis») | Media | El mapa medido (§6.3) fija el techo: **un grupo que ya puntúa al 100 % no recibe dataset** |
 
 ---
 
 ## 14. Limpieza pendiente (no bloquea, pero mancha)
 
-- `~/aios-model` — **pendiente de tu confirmación para borrar**.
-- `~/models/Qwen_Qwen3-8B-Q4_K_M.gguf` (4,7 GB) — duplicado.
-- `~/aios-work/backups/modelos/Qwen_Qwen3.5-9B-Q4_K_M.gguf` (5,8 GB) — copia del 9B descartado.
+- ~~`~/aios-model` — pendiente de borrar~~ → **borrado** (decisión 4 de §15: 786 MB liberados). Esta línea contradecía a §15; queda corregida.
+- `~/models/Qwen_Qwen3-8B-Q4_K_M.gguf` (4,7 GB) — duplicado. **Se queda** hasta que lo digas (27 sep: «no borremos el 8b y el 9b todavía»). Al borrarlo hay que actualizar **antes** `aios-agent/setup.py` (`LOCAL_MODELS`) y `scripts/launch_llama.py`, que lo apuntan.
+- `~/aios-work/backups/modelos/Qwen_Qwen3.5-9B-Q4_K_M.gguf` (5,8 GB) — copia del 9B descartado. Misma condición y mismas referencias (`llama-hardened/entrypoint-qwen.sh`).
+- **Nuevo (27 sep):** `~/models/Qwen3.5-4B-Q4_K_M.gguf` (2,74 GB) — **no es basura**: es la base del proyecto, verificada por sha256 (§5).
+- **Nuevo (27 sep):** el contenedor de ensayo **`llama-4b-ensayo`** (`127.0.0.1:8099`) sigue **en pie**: es el que sirvió para medir el 4B. Se apaga cuando lo digas.
 - Ollama con `qwen3.5:0.8b` arriba en `127.0.0.1:11434` — **nadie lo usa**.
 - `~/llama-hardened`: `entrypoint-qwen.sh`, `bin.fork-k2/` + `lib.fork-k2/` (51 MB) — código muerto.
 - **Higiene del token:** `~/.local/bin/.git-askpass-github` da a cualquier proceso que corra como `ccmai` el token `ghp_` con acceso a los 6 repos privados. **Esto sí merece un token fine-grained.**
@@ -566,8 +774,14 @@ El cómputo no es el cuello de botella: lo son el dataset verificado y el eval. 
 | 4 | **`aios-model` borrado** | ✅ 786 MB liberados. Registro en `CIERRE-aios-model.md` | **cerrado** |
 | 5 | **Plan de prueba**: LLM en el VPS + portátil real con AIOS | ✅ Ver §10.4 | **cerrado** |
 | 6 | Versión local (ISO) en esta tanda o después | — | ⏳ abierto — recomiendo tras la Fase 2 |
-| 7 | **Oráculo = VM desechable**, nunca el portátil de trabajo | ✅ Ver §6.5c — encaja con el `docs/VIRTUALBOX.md` que ya tienes | **cerrado** |
+| 7 | **Oráculo desechable, nunca el portátil de trabajo** | ✅ Resuelto el 27 sep (§6.5c): **chroot del VPS** para sistema/paquetes/diagnóstico (ya operativo, §6.6). **Y el 27 sep el chroot se amplió a escritorio y navegador**: X real sobre la tarjeta virtual `vkms` + chromium con CDP, así que **la VM ya no hace falta** y el portátil sale del camino crítico | **cerrado** |
 | 8 | `~/corpus` (52 GB del preentrenamiento abandonado) | — | ⏳ **pendiente de tu confirmación** |
+| 9 | **El 4B es la base**, ya descargado y verificado por sha256 en el VPS | ✅ §5 | **cerrado** |
+| 10 | **El pensamiento se queda encendido** | ✅ Medido: apagarlo baja los aciertos (93,1→88,5 %) y sube el tiempo (29,7→49,1 s) | **cerrado** |
+| 11 | **La puerta A/B se mide sobre el prompt corto** (§8.6) | ✅ «Superar al 35B» no es medible con 172/174 | **cerrado** |
+| 12 | **Fase 1 en el chroot, sin VM y sin Lambda** | ✅ El hueco está donde el chroot es fiel (§6.5c) | **cerrado** |
+| 13 | **Navegador y media/torrent en el banco** | ✅ **Cerrado** (27 sep): 18 casos nuevos, **29/29** herramientas, y sin necesidad del portátil | **cerrado** |
+| 14 | **Agujero `docker` de la capa de permisos** | ✅ Medido (64/74), tapado y verificado (**74/74**). Commit `89bf620` | **cerrado** |
 
 ---
 

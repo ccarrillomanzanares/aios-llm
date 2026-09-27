@@ -1,0 +1,12 @@
+================================================================================================
+MULTI-STEP BENCH OF aios-llm  —  v2 (shipped code)     label: 4b-banco-completo
+================================================================================================
+bench         : casos.json v2.0  (51 cases)
+endpoint      : http://127.0.0.1:8099   (key: yes)
+system prompt : 11881 chars (prompt_produccion.txt)
+tools         : 29
+evaluations   : 51 cases x 6 languages = 306  (up to 6 steps each)
+tool check    : on
+================================================================================================
+  OK    paq-instalar               en   96.2s 6p run_command,run_command,run_command,process_start,process_start,run_command
+  OK    paq-instalar               es   72.4s 2p run_command,process_start

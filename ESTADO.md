@@ -248,25 +248,60 @@ To probe the layer use **`verificar_comando()`**, NOT `_segmento_destructivo()`:
 answers "passes" for `mkfs.ext4 /dev/sda`, which is really blocked. Two different functions,
 two different answers — do not confuse them.
 
-### Where we are, and the next step (27 sep)
+### The bench is FINISHED, and the laptop came out of the critical path (27 sep)
 
-**The order is bench -> data -> train**, and the reason is plain: the bench is the scale. It only
-has cases for **11 of the 29 tools**, so a training run today could break the other 18 and nobody
-would notice. The safety layer is done (74/74); the bench is what is still missing.
+**The order is still bench -> data -> train**, but the first step is done. The bench covered **11 of
+29 tools** this morning; it now covers **29 of 29**, with **51 cases × 6 languages = 306
+evaluations**.
 
-1. **Finish the bench** — 13 tools can be covered **without the acceptance laptop**:
-   `torrent_search`, `torrent_download`, `torrent_status`, `torrent_play`, `torrent_control`,
-   `list_desktop_apps`, `git_operation`, `process_close`, `cloud_reasoning`, `get_context_usage`,
-   `ocr`, `xdotool_key`, `xdotool_click`. The browser (5) and the real *execution* of the desktop
-   tools need the laptop with AIOS switched on (Carlos: it is not on, he will do it when it is time).
+1. **The bench was finished, and 18 tools that had no case now have one.** Counting them with a
+   script — crossing `casos.json` against the real register in `tools.py` — found **two tools the eye
+   had assumed covered**: `torrent_search` and `torrent_download`, which are the entire user-facing
+   media flow. A group that scores well because only part of it is measured is not measured.
+2. **Writing those cases required the oracle to be able to RUN the tools, and this is the part that
+   mattered.** For three days the answer was "the desktop and browser need the laptop". Measured,
+   that is false:
+   - the VPS has a **virtual DRM card (`vkms`)**, and Xorg on top of it gives a **real X server**:
+     `scrot`, `xdotool` and `tesseract` answer for real;
+   - `:0` was unusable because the VPS's own Xorg (lightdm) holds its **abstract socket** and the
+     chroot shared the VPS network namespace — `aios-agent` hard-codes `DISPLAY=:0`;
+   - giving the oracle its own namespace frees `:0` but **cuts the internet**, which `web_search`
+     and `torrent_search` need; it came back with veth + NAT + `FORWARD ACCEPT` (`FORWARD` is `DROP`
+     here, which is why the first attempt resolved nothing);
+   - `chromium` works with CDP, but **not** under the PID namespace: the kernel kills the whole
+     namespace when its PID 1 exits, `setsid` and `nohup` notwithstanding. It is started without it,
+     which costs nothing — that namespace exists so `ps` does not report the VPS's processes to the
+     **model**, and that path keeps it.
+   `oracle/entorno.sh` holds all of it and re-applies it after every reset.
+3. **The tools are run by calling the code that ships.** `bateria/ejecutor_v2.py` imports
+   `tools.execute_tool()` **inside the oracle**; it translates nothing. Measured: 19 of its 20 tools
+   run there (the one that does not is `web_search`, because Firecrawl is not installed — it returns
+   its real error and the tool choice is what gets scored). A gain that is easy to miss: `run_command`
+   now consults the security layer **itself**, so the model receives the **real** refusal and not one
+   the bench wrote by hand. A bench that invents the refusal cannot notice when the refusal changes.
+4. **`ejecutor.py` (v1) is not touched.** It produced the baseline the project is measured against
+   (35B: 173/174, traps 53/54) and replacing it would have invalidated that number. Its mandatory
+   control still reproduces **exactly**: `repuntuar.py --casos casos.json.v1` → **167/174**. That
+   control **overwrote the 172/174 baseline file** when it ran (its default output name is the same),
+   which is correct for the old bench and false in that file; it was restored from git and the
+   re-scorer now **refuses to overwrite** unless told to.
+5. **What still cannot be measured here, said out loud:** `web_search` (Firecrawl missing) and the
+   *result* of the torrent tools (no transmission daemon — they return their real "RPC unreachable",
+   so the tool choice and the honesty of the report are what is scored, which is exactly the trap the
+   production prompt names).
+
+**Next step, in order:**
+
+1. **Measure the 4B against the full bench** (baseline first, before any training): the 4B's 93.1 %
+   was measured over 174 evaluations; the bench is now 306, and the groups that were never measured
+   are the ones that can move the number in either direction.
 2. **Generate trajectories** with the professor in the chroot of the VPS (free, no GPU).
-3. **Train** in Lambda (~60 EUR) once there is material worth training on: the current 174
-   trajectories will not move the 72.4 %.
+3. **Train** in Lambda (~60 EUR) once there is material worth training on: 306 trajectories from one
+   model is not enough material, but it is now a real baseline instead of a partial one.
 
-Optional and in parallel: a **smoke-test training** with those 174 trajectories, to exercise the
-whole pipeline end to end (~60 EUR). It will not improve the model; it is for finding plumbing
-problems before the real run. **Lambda has no CLI installed on the laptop yet** — that has to be
-solved before any of this.
+Optional and in parallel: a **smoke-test training** to exercise the whole pipeline end to end
+(~60 EUR). It will not improve the model; it is for finding plumbing problems before the real run.
+**Lambda still has no CLI installed on the laptop** — that has to be solved before any of this.
 
 ### The bench was corrected 9 times (all of them real faults of the instrument)
 

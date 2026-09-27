@@ -2,20 +2,59 @@
 
 It measures the only thing that matters: **does this model work as the AIOS assistant?**
 
+## Two benches: v1 is the baseline, v2 runs the shipped code
+
+| | `bateria_agente.py` (v1) | `bateria_agente_v2.py` (v2) |
+|---|---|---|
+| How it runs a tool | translates it into a shell command | calls **`tools.execute_tool()`** inside the oracle — the code that ships |
+| Cases | `casos.json` before v2 | all **51** cases |
+| Tool check | `verificacion` (runs a command) | + `comprobacion`: calls the case's own tool and compares its output |
+| Baseline | **35B: 173/174, traps 53/54** | — |
+
+**v1 is not touched.** It produced the number the whole project is measured against, and
+replacing it would have invalidated it. Its mandatory control still reproduces exactly:
+
+```bash
+sudo python3 repuntuar.py --casos casos.json.v1          # control only: 167/174
+sudo python3 repuntuar.py --casos casos.json.v1 --json-salida /tmp/control.json
+```
+
+That first command now **refuses to write**, on purpose: its default output name is the file that
+holds the 172/174 baseline, and running the control once already clobbered that file with a
+correct-but-wrong-in-this-file 167/174. Pass `--json-salida`, or `--forzar` if you mean it.
+
 ## How it is used
 
 ```bash
 cd ~/aios-llm/bateria
 
-# quick test (2 cases, one language): ~15 s
-python3 bateria.py --limite 2 --idioma es
+# the whole bench needs its environment first (network, X, fixtures)
+sudo /srv/oracle/entorno.sh setup
 
-# full run: 31 cases × 6 languages = 186 evaluations
-python3 bateria.py --etiqueta qwen3.6-35b --json-salida resultado.json
+# quick test (2 cases, one language)
+sudo python3 bateria_agente_v2.py --limite 2 --idioma es
 
-# with another machine (the VPS, the laptop...)
-python3 bateria.py --url https://webuillama.ccmai.org --etiqueta 35b
+# full run: 51 cases × 6 languages = 306 evaluations
+sudo python3 bateria_agente_v2.py --etiqueta 4b-completo
+
+# only one block
+sudo python3 bateria_agente_v2.py --solo nave-,torrent- --idioma es
 ```
+
+## Everything is exercisable in the oracle — the laptop is no longer needed
+
+Measured on 27 sep. The 18 tools that had no case are now measured **by execution**, and none of
+them requires a real desktop machine:
+
+| Piece | What made it possible |
+|---|---|
+| `screenshot`, `ocr`, `xdotool_*` | a **real X server**: Xorg on the VPS's virtual DRM card (`vkms`) |
+| `browser_*` (5) | chromium with CDP, started inside the chroot by `entorno.sh browser-up` |
+| `torrent_search` | the oracle kept the internet, with its own network namespace |
+| `git_operation`, `process_close`, … | the production dispatcher imported inside the chroot |
+
+Recipe, setup and the pitfalls that each cost a round: `oracle/entorno.sh` and
+`references/banco-escritorio-y-navegador.md` in the `aios-vps-ops` skill.
 
 ## The two files that define the contract
 
