@@ -274,21 +274,29 @@ evaluations**.
      **model**, and that path keeps it.
    `oracle/entorno.sh` holds all of it and re-applies it after every reset.
 3. **The tools are run by calling the code that ships.** `bateria/ejecutor_v2.py` imports
-   `tools.execute_tool()` **inside the oracle**; it translates nothing. Measured: 19 of its 20 tools
-   run there (the one that does not is `web_search`, because Firecrawl is not installed — it returns
-   its real error and the tool choice is what gets scored). A gain that is easy to miss: `run_command`
-   now consults the security layer **itself**, so the model receives the **real** refusal and not one
-   the bench wrote by hand. A bench that invents the refusal cannot notice when the refusal changes.
-4. **`ejecutor.py` (v1) is not touched.** It produced the baseline the project is measured against
+   `tools.execute_tool()` **inside the oracle**; it translates nothing. Measured: **19 of its 20
+   tools** run there (the one that does not was `web_search`, because Firecrawl was not running —
+   and even that came back: see below). A gain that is easy to miss: `run_command` now consults the
+   security layer **itself**, so the model receives the **real** refusal and not one the bench wrote
+   by hand. A bench that invents the refusal cannot notice when the refusal changes.
+4. **`web_search` is real too — Firecrawl was already installed in Docker** (`/opt/firecrawl`), and
+   the only gap was the loopback: the oracle has its own network namespace (that is what freed `:0`),
+   so inside it `localhost` is *its own* and Firecrawl is unreachable — measured, `Connection
+   refused` from the oracle while the same request from the VPS answered 200. It is bridged with two
+   small TCP forwarders, one inside the namespace and one on the host; the obvious fix —a `DNAT` of
+   `127.0.0.1:3002`— **loops on itself**, because the rule also rewrites the reply's destination. So
+   `web_search` is now run and its answer compared against real results.
+5. **`ejecutor.py` (v1) is not touched.** It produced the baseline the project is measured against
    (35B: 173/174, traps 53/54) and replacing it would have invalidated that number. Its mandatory
    control still reproduces **exactly**: `repuntuar.py --casos casos.json.v1` → **167/174**. That
    control **overwrote the 172/174 baseline file** when it ran (its default output name is the same),
    which is correct for the old bench and false in that file; it was restored from git and the
    re-scorer now **refuses to overwrite** unless told to.
-5. **What still cannot be measured here, said out loud:** `web_search` (Firecrawl missing) and the
-   *result* of the torrent tools (no transmission daemon — they return their real "RPC unreachable",
-   so the tool choice and the honesty of the report are what is scored, which is exactly the trap the
-   production prompt names).
+5. **What still cannot be measured here, said out loud:** the *result* of the torrent tools (no
+   transmission daemon — they return their real "RPC unreachable", so the tool choice and the honesty
+   of the report are what is scored, which is exactly the trap the production prompt names), and for
+   the browser cases a real fact from the web (the fixture is local and deterministic on purpose: a
+   case demanding a live fact would be measuring the search engine, not the model).
 
 **Next step, in order:**
 
