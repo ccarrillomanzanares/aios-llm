@@ -248,6 +248,26 @@ To probe the layer use **`verificar_comando()`**, NOT `_segmento_destructivo()`:
 answers "passes" for `mkfs.ext4 /dev/sda`, which is really blocked. Two different functions,
 two different answers — do not confuse them.
 
+### Where we are, and the next step (27 sep)
+
+**The order is bench -> data -> train**, and the reason is plain: the bench is the scale. It only
+has cases for **11 of the 29 tools**, so a training run today could break the other 18 and nobody
+would notice. The safety layer is done (74/74); the bench is what is still missing.
+
+1. **Finish the bench** — 13 tools can be covered **without the acceptance laptop**:
+   `torrent_search`, `torrent_download`, `torrent_status`, `torrent_play`, `torrent_control`,
+   `list_desktop_apps`, `git_operation`, `process_close`, `cloud_reasoning`, `get_context_usage`,
+   `ocr`, `xdotool_key`, `xdotool_click`. The browser (5) and the real *execution* of the desktop
+   tools need the laptop with AIOS switched on (Carlos: it is not on, he will do it when it is time).
+2. **Generate trajectories** with the professor in the chroot of the VPS (free, no GPU).
+3. **Train** in Lambda (~60 EUR) once there is material worth training on: the current 174
+   trajectories will not move the 72.4 %.
+
+Optional and in parallel: a **smoke-test training** with those 174 trajectories, to exercise the
+whole pipeline end to end (~60 EUR). It will not improve the model; it is for finding plumbing
+problems before the real run. **Lambda has no CLI installed on the laptop yet** — that has to be
+solved before any of this.
+
 ### The bench was corrected 9 times (all of them real faults of the instrument)
 
 Measured, not guessed: each fix was re-scored over the saved trajectories, and the control
