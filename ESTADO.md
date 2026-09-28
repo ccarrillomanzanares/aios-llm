@@ -3,6 +3,17 @@
 **Date:** 26 sep 2026 · session 2 (27 sep): multi-step run finished and bench fixed.
 **Language:** English, except `PLAN-MAESTRO.md` (Spanish, on purpose).
 
+> ## READ THIS FIRST: the live numbers are in `MEDIDAS.md`
+>
+> This handover still carries figures from the **174-evaluation** bench (162/174, 172/174,
+> 93,1 %, 98,9 %). Those are **history**, not the current bar. The bench is now
+> **51 cases x 6 languages = 306 evaluations, 29/29 tools**, and the current numbers —
+> regenerated from the result files, never typed by hand — live in **`MEDIDAS.md`**
+> (rebuild with `python3 bateria/generar_medidas.py`).
+>
+> Anything below that quotes a 174-based figure is a record of that epoch. **Do not
+> compare across benches**: the plan's §3.1 explains why and what replaced what.
+
 > Read it all before touching anything. At the end is the list of **mistakes I have
 > already made myself**, so they don't happen again: in this project the measurement
 > instrument has failed more times than the model.
