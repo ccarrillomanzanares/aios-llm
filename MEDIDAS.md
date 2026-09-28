@@ -164,7 +164,7 @@ El +9 s por evaluacion es lo que cuesta el oraculo (reset medido 8,4 s + herrami
 
 <!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
 
-| bloque | fallos atacables | % del material |
+| bloque | fallos medidos (no reservados) | % del material |
 |---|---|---|
 | paquetes | 6 | **29 %** |
 | escritorio | 5 | **24 %** |
@@ -173,6 +173,11 @@ El +9 s por evaluacion es lo que cuesta el oraculo (reset medido 8,4 s + herrami
 | procesos | 1 | **5 %** |
 | red | 1 | **5 %** |
 | **total** | **21** | 100 % |
+
+Son los fallos del 4B **que pueden recibir material**: los reservados quedan
+fuera porque nunca se entrenan. Ojo, no es el techo alcanzable: de estos, el
+profesor **tampoco** sabe resolver unos pocos, y esos no son leccion. El techo
+real esta en el bloque de arriba (el cruce con el profesor).
 
 Los bloques que no aparecen aqui **no fallan** con el banco de hoy, asi que no
 reciben material. **identidad** es el unico bloque en ese caso.

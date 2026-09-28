@@ -236,11 +236,16 @@ def construir_bloques():
         total_f = sum(fallos.values())
         L = ["<!-- GENERADO por bateria/generar_medidas.py el %s. NO editar a mano. -->" % hoy,
              "",
-             "| bloque | fallos atacables | % del material |", "|---|---|---|"]
+             "| bloque | fallos medidos (no reservados) | % del material |", "|---|---|---|"]
         for k, v in fallos.most_common():
             L.append("| %s | %d | **%.0f %%** |" % (k, v, 100.0 * v / total_f))
         L.append("| **total** | **%d** | 100 %% |" % total_f)
         L += ["",
+              "Son los fallos del 4B **que pueden recibir material**: los reservados quedan",
+              "fuera porque nunca se entrenan. Ojo, no es el techo alcanzable: de estos, el",
+              "profesor **tampoco** sabe resolver unos pocos, y esos no son leccion. El techo",
+              "real esta en el bloque de arriba (el cruce con el profesor).",
+              "",
               "Los bloques que no aparecen aqui **no fallan** con el banco de hoy, asi que no",
               "reciben material. **identidad** es el unico bloque en ese caso."]
         bloques["reparto"] = L
