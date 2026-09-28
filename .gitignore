@@ -28,3 +28,12 @@ trayectorias_4b-banco-completo.jsonl
 # The 35B measurement against the full bench (the numbers live in ESTADO.md)
 resultado_35b-banco-completo.json
 trayectorias_35b-banco-completo.jsonl
+
+# Phase 1 generation material: it is training DATA (goes to HuggingFace when closed),
+# and it grows by thousands of lines. The measurement OF it (counts, pass rate) lives
+# in MEDIDAS.md, which IS versioned.
+dataset_*.jsonl
+prueba-gen.log
+medida-*.log
+# The running instance's id and ip: they change every time an instance is launched
+bateria/instancia-lambda-*.txt

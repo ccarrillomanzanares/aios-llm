@@ -127,7 +127,33 @@ def main():
     ap.add_argument("--sin-comprobacion", dest="comprobacion", action="store_false",
                     help="skip the tool-execution check (the bench has it ON by default, and so does this)")
     ap.add_argument("--sin-thinking", action="store_true")
+    ap.add_argument("--temperaturas", default="0.0",
+                    help="comma-separated: one trajectory per case per temperature, the teacher "
+                         "solving the same thing in a different way each time. This is how the "
+                         "material grows without inventing content. 0.0 alone reproduces exactly "
+                         "the run the professor was measured with, so the first round stays "
+                         "comparable; the extra rounds add variety on top.")
+    ap.add_argument("--holdout", default="holdout.txt",
+                    help="file with the cases that must NEVER generate material (the honest exam)")
+    ap.add_argument("--incluir-holdout", action="store_true",
+                    help="generate for the reserved cases too (only for smoke tests, never for real data)")
     args = ap.parse_args()
+
+    # --- the reserved cases, read from holdout.txt -----------------------------
+    # If the material answered the same questions the bench asks, the result would
+    # measure memory instead of the craft. The reserved slice is the honest exam.
+    ruta_h = args.holdout if os.path.isabs(args.holdout) else os.path.join(BASE, args.holdout)
+    reservados = set()
+    if os.path.isfile(ruta_h):
+        for ln in open(ruta_h, encoding="utf-8"):
+            ln = ln.split("#")[0].strip()
+            if ln:
+                reservados.add(ln)
+    if reservados and not args.incluir_holdout:
+        print("reserved cases excluded: %d" % len(reservados))
+    elif args.incluir_holdout:
+        print("WARNING: --incluir-holdout, generating material for the honest exam too")
+
 
     args.sin_navegador = not args.navegador
     # EXPLICIT, and it has to be. The bench's `main()` sets this before evaluating:
@@ -162,6 +188,14 @@ def main():
 
     grupos = [g.strip() for g in args.grupos.split(",") if g.strip()]
     casos = [c for c in banco_casos["casos"] if c["grupo"] in grupos]
+    # The reserved cases are dropped HERE, after the case list exists, and before
+    # anything is generated. They are the honest exam: no material is ever made
+    # from them.
+    if reservados and not args.incluir_holdout:
+        antes = len(casos)
+        casos = [c for c in casos if c["id"] not in reservados]
+        print("reserved cases excluded from the material: %d (%d -> %d cases)"
+              % (antes - len(casos), antes, len(casos)))
     if args.limite:
         casos = casos[:args.limite]
     idiomas = [args.idioma] if args.idioma else banco_casos["idiomas"]
@@ -187,38 +221,60 @@ def main():
     n_ok = n_no = 0
     por_motivo = {}
     t0 = time.time()
-    for caso in casos:
-        for idioma in idiomas:
-            texto = caso["idiomas"].get(idioma)
-            if not texto:
-                continue
-            try:
-                # The SAME function the bench uses. Nothing re-implemented.
-                p, mensajes = banco.evaluar(caso, idioma, texto, args, prompt, tools, capa, clave)
-                keep, motivo = filtrar(caso, p, mensajes)
-            except Exception as e:
-                keep, motivo, p, mensajes = False, "exception: %s" % e, {}, []
-            fila = {"caso": caso["id"], "grupo": caso["grupo"], "tipo": caso["tipo"],
-                    "idioma": idioma, "pasos": p.get("pasos"), "segundos": p.get("segundos"),
-                    "herramientas": p.get("herramienta_usada"),
-                    "motivo_descarte": motivo or None}
-            if keep:
-                # The training material itself: the production prompt, the real
-                # tool outputs, and the professor's turns.
-                fila["mensajes"] = mensajes
-                f_bueno.write(json.dumps(fila, ensure_ascii=False) + "\n")
-                f_bueno.flush()
-                n_ok += 1
-                marca = "KEEP"
-            else:
-                f_malo.write(json.dumps(fila, ensure_ascii=False) + "\n")
-                f_malo.flush()
-                n_no += 1
-                marca = "DROP"
-                por_motivo[motivo.split(":")[0][:52]] = por_motivo.get(motivo.split(":")[0][:52], 0) + 1
-            print("  %s %-26s %-3s %5.1fs %dp  %s"
-                  % (marca, caso["id"], idioma, p.get("segundos") or 0, p.get("pasos") or 0,
-                     motivo[:60] if motivo else (p.get("herramienta_usada") or "")))
+    temperaturas = [float(t.strip()) for t in args.temperaturas.split(",") if t.strip()]
+    total_previsto = len(casos) * len(idiomas) * len(temperaturas)
+    print("temperatures  : %s  -> %d trajectories per case+language"
+          % (temperaturas, len(temperaturas)))
+    print("PLANNED       : %d evaluations" % total_previsto)
+    print("=" * 96)
+
+    hechas = 0
+    for temperatura in temperaturas:
+        if len(temperaturas) > 1:
+            print("\n--- round at temperature %.2f ---" % temperatura)
+        # The same hook the bench already uses for the thinking flag: merged into
+        # the request body as is. temperature 0.0 leaves the request exactly as the
+        # measured run had it, so round one stays directly comparable.
+        extra = dict(args.extra_peticion or {})
+        if temperatura != 0.0:
+            extra["temperature"] = temperatura
+        args.extra_peticion = extra or None
+
+        for caso in casos:
+            for idioma in idiomas:
+                texto = caso["idiomas"].get(idioma)
+                if not texto:
+                    continue
+                hechas += 1
+                try:
+                    # The SAME function the bench uses. Nothing re-implemented.
+                    p, mensajes = banco.evaluar(caso, idioma, texto, args, prompt, tools, capa, clave)
+                    keep, motivo = filtrar(caso, p, mensajes)
+                except Exception as e:
+                    keep, motivo, p, mensajes = False, "exception: %s" % e, {}, []
+                fila = {"caso": caso["id"], "grupo": caso["grupo"], "tipo": caso["tipo"],
+                        "idioma": idioma, "temperatura": temperatura,
+                        "pasos": p.get("pasos"), "segundos": p.get("segundos"),
+                        "herramientas": p.get("herramienta_usada"),
+                        "motivo_descarte": motivo or None}
+                if keep:
+                    # The training material itself: the production prompt, the real
+                    # tool outputs, and the professor's turns.
+                    fila["mensajes"] = mensajes
+                    f_bueno.write(json.dumps(fila, ensure_ascii=False) + "\n")
+                    f_bueno.flush()
+                    n_ok += 1
+                    marca = "KEEP"
+                else:
+                    f_malo.write(json.dumps(fila, ensure_ascii=False) + "\n")
+                    f_malo.flush()
+                    n_no += 1
+                    marca = "DROP"
+                    por_motivo[motivo.split(":")[0][:52]] = por_motivo.get(motivo.split(":")[0][:52], 0) + 1
+                print("  [%4d/%4d] %s %-26s %-3s %5.1fs %dp  %s"
+                      % (hechas, total_previsto, marca, caso["id"], idioma,
+                         p.get("segundos") or 0, p.get("pasos") or 0,
+                         motivo[:52] if motivo else (p.get("herramienta_usada") or "")))
 
     total = n_ok + n_no
     print("\n" + "=" * 96)
