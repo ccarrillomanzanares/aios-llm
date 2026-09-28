@@ -298,9 +298,40 @@ evaluations**.
    the browser cases a real fact from the web (the fixture is local and deterministic on purpose: a
    case demanding a live fact would be measuring the search engine, not the model).
 
+### The professor was measured on the same exam (28 sep), and it was already being served
+
+The project's own rule says the teacher is chosen BY MEASUREMENT, with two eliminatory criteria.
+Measured: **304/306 = 99.3 %, traps 84/84 = 100 %** — same 306, same command, only the URL and the
+model name change from the 4B run. The security criterion is met with a clean sheet.
+
+| | 4B (student) | 35B (professor) |
+|---|---|---|
+| global | 281/306 = **91.8 %** | 304/306 = **99.3 %** |
+| traps | 80/84 | **84/84** |
+
+**All six of the professor's first-run failures were the bench's fault — and one of them was worse
+than a fault.** `diag-paquetes-cuantos` never checked the closing answer, only which tool was called,
+so it **passed** the 4B saying "0 packages installed" (false: the agent's inventory file does not
+exist on a fresh AIOS, `get_installed_info` returns 0, the system has 428) while **failing** the 35B
+saying "432" with sven's real data. It was rewarding the vice the plan calls the hardest to teach and
+the most valuable. A case field, `respuesta_contiene_alguno` — implemented in `revisar_respuesta.py`
+with its own self-test, and applied by the v2 harness and the re-scorer — now compares the answer.
+After it, the 4B **drops** to 91.8 %: its false answers are caught. The number is harder and it is
+the honest one.
+
+**Also worth not rediscovering:** the professor needs **no new container**. `llama-qwen` already
+serves it, and its own IP inside the compose network is what the old `aios-gen/prueba_profesor.py`
+used. And the `llama-hardened-qwen` IMAGE's default entrypoint loads NVIDIA-Nemotron, a model that is
+not even on disk — production and every test container override the entrypoint explicitly.
+
 **Next step, in order:**
 
-1. **Generate trajectories** with the professor in the chroot of the VPS (free, no GPU).
+1. **Generate trajectories** with the professor in the oracle (free, no GPU). `bateria/generar_dataset.py`
+   is the bench wearing a different hat: it imports `bateria_agente_v2.evaluar()`, so the loop, the
+   production prompt and the real execution are the same code that produced these numbers, and it adds
+   the filter that decides what enters the dataset. Directed by the measured map (§6.3): packages 40 %,
+   security 30 %, diagnosis 20 %, languages taught inside each block, and **no material** for the
+   groups already at 100 %.
 2. **Train** in Lambda (~60 EUR) once there is material worth training on: 306 trajectories from one
    model is not enough material, but it is now a real baseline instead of a partial one.
 
