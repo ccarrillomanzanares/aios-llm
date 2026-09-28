@@ -530,9 +530,9 @@ comprobar). El (b) es el criterio que este plan llama el más difícil de enseñ
 
 ### 6.4 Reglas de construcción
 
-1. **El system prompt del dataset == el de producción** (tu check #5 del preflight). Sin esto el modelo aprende un contrato y sirve otro.
-2. **Se entrena también la versión corta**, para que el prompt de producción pueda encogerse (§3).
-3. **Filtro de 3 capas** sobre todo el material del profesor: forma, seguridad, herramienta. Ya lo tienes y ya funcionó (29% de paso) — *sujeto a la auditoría de §6.5*.
+1. **El system prompt del dataset == el de producción** (verificado el 28 sep: los dos leen `bateria/prompt_produccion.txt`, el mismo fichero). Sin esto el modelo aprende un contrato y sirve otro.
+2. **Se entrena también la versión corta**, para que el prompt de producción pueda encogerse (§3.1b, objetivo 2).
+3. **Filtro de 3 capas** sobre todo el material del profesor: forma, seguridad, herramienta. Ya funciona y ya se midió (el 29 % de paso de la primera prueba): vive en el generador de la Fase 1, no en una pieza heredada.
 4. **El profesor no es de fiar.** Medido en tu sesión del 19-20 sep: Qwen3-32B **ejecuta el destructivo en 3 de 4 casos**. Filtro obligatorio, nunca opcional.
 5. **Verificación por ejecución**: la trayectoria solo entra si el checker dice que la tarea se resolvió.
 
@@ -542,17 +542,19 @@ comprobar). El (b) es el criterio que este plan llama el más difícil de enseñ
 >
 > **Aceptado, y añade dos tareas obligatorias a la Fase 0.** Nada se hereda por lo que diga un documento; solo por lo que demuestre al ejecutarse.
 
-**(a) Auditoría pieza a pieza.** Cada cosa se marca antes de usarla:
+**(a) Auditoría pieza a pieza — resuelta el 28 sep.** De `aios-model` **no se reutiliza nada** (decisión de Carlos: el proyecto se hace de nuevo), así que esa auditoría **ya no procede**: no hay pieza heredada que auditar. La tabla de abajo se queda como registro de lo que se pensó auditar y **por qué ya no aplica**:
 
-| Pieza a auditar | Cómo se comprueba | Estado |
-|---|---|---|
-| `tools/bateria.py` + `casos.json` (35 casos) | se ejecuta y se contrasta **caso por caso a mano** | por decidir |
-| Ejecutores reales (`run_command`, `read_file`, …) | prueba en seco + **control positivo** con casos conocidos | por decidir |
-| Filtro de 3 capas | se le meten destructivos conocidos y se cuenta cuántos caza | por decidir |
-| `preflight_sft.py` (8 checks) | se corre sobre un dataset de juguete **roto a propósito** | por decidir |
-| `gen/build_episodes.py`, `bateria_local.py` | se ejecutan y se lee la salida | por decidir |
+| Pieza de `aios-model` que se pensaba auditar | Estado real |
+|---|---|
+| `tools/bateria.py` + `casos.json` (35 casos) | **No se hereda.** El banco vivo es `bateria/casos.json`, construido y corregido 22 veces midiendo: **51 casos × 6 idiomas = 306 evaluaciones, 29/29 herramientas** |
+| Ejecutores reales (`run_command`, `read_file`, …) | **No se hereda.** El ejecutor vivo es `bateria/ejecutor_v2.py`, que importa el **despachador de producción** `tools.execute_tool()` |
+| Filtro de 3 capas | **No se hereda.** El filtro vive ahora dentro del generador de la Fase 1 |
+| `preflight_sft.py` (8 checks) | **No existe en este repo**, solo en `aios-model` (verificado el 28 sep con `find`). Los checks que sí valen están en el plan (§7) y **hay que escribirlos aquí** |
+| `gen/build_episodes.py`, `bateria_local.py` | **No se heredan** |
 
-**Regla:** lo que no pase la auditoría **se reescribe**, no se parchea. Lo que la pase, se reutiliza tal cual.
+**Lo que SÍ se audita, y sigue vigente:** el **oráculo** (§6.6), la **capa de permisos de `aios-agent`** (§9) y las **herramientas reales** que el banco ejecuta. Estas tres no son piezas heredadas: son código vivo, y se verifican ejecutándolas.
+
+**Regla que no cambia:** lo que no pase la auditoría **se reescribe**, no se parchea.
 
 **(b) Profesor elegido por medición, no por intuición.** Ya lo hiciste una vez y el método era bueno: mediste Qwen3-32B y descubriste que **ejecuta el destructivo en 3 de 4 casos**. Se repite el ejercicio, ahora con **criterios explícitos** y más de un candidato:
 
@@ -746,7 +748,7 @@ El +9 s por evaluacion es lo que cuesta el oraculo (reset medido 8,4 s + herrami
   1. **SFT corto y verificado** (cold start canónico) — enseña la forma exacta.
   2. **SFT masivo** sobre el dataset completo.
   3. **GRPO con recompensa de ejecución** *(opcional, fase tardía)* — recompensa = ¿pasó el checker + no destructivo + idioma correcto + menos turnos.
-- **Antes de cada run en GPU:** `preflight_sft.py` (tus 8 checks) **+ 2 nuevos**: cobertura de idiomas y presupuesto del prompt corto.
+- **Antes de cada run en GPU:** los checks de §7, que **hay que escribir en este repo** (el `preflight_sft.py` del plan viejo **no existe aquí**, era de `aios-model`, que está descartado): **+ 2 nuevos**: cobertura de idiomas y presupuesto del prompt corto.
 - **No-regresión obligatoria:** cada iteración se mide contra la batería completa; ninguna métrica puede bajar.
 
 ---
