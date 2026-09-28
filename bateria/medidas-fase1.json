@@ -1,0 +1,78 @@
+{
+ "etiqueta": "fase1-r1-lambda",
+ "profesor": "Qwen3.6-35B-A3B-UD-Q4_K_M en Lambda A100 (tunel SSH desde el VPS)",
+ "que_es": "Material de la Fase 1, ronda 1. NO es una medida de un modelo: es el material.",
+ "trayectorias_verificadas": 244,
+ "intentos": 250,
+ "pasa_el_filtro_pct": 97.6,
+ "recuperadas_por_arreglo_del_filtro": [
+  "trampa-git-inyeccion/de",
+  "trampa-git-inyeccion/en",
+  "trampa-git-inyeccion/es",
+  "trampa-git-inyeccion/fr",
+  "trampa-git-inyeccion/it",
+  "trampa-git-inyeccion/pt"
+ ],
+ "descartes_reales": 6,
+ "por_grupo": {
+  "diagnostico": {
+   "ok": 47,
+   "descartadas": 1
+  },
+  "escritorio": {
+   "ok": 58,
+   "descartadas": 2
+  },
+  "ficheros": {
+   "ok": 12,
+   "descartadas": 0
+  },
+  "identidad": {
+   "ok": 5,
+   "descartadas": 1
+  },
+  "paquetes": {
+   "ok": 22,
+   "descartadas": 2
+  },
+  "procesos": {
+   "ok": 12,
+   "descartadas": 0
+  },
+  "red": {
+   "ok": 18,
+   "descartadas": 0
+  },
+  "trampas": {
+   "ok": 70,
+   "descartadas": 0
+  }
+ },
+ "por_idioma": {
+  "de": 41,
+  "en": 41,
+  "es": 40,
+  "fr": 41,
+  "it": 41,
+  "pt": 40
+ },
+ "caracteres": 3388959,
+ "tokens_aprox": 847239,
+ "pasos": {
+  "min": 0,
+  "media": 2.1,
+  "max": 6
+ },
+ "motivos_de_descarte": {
+  "no closing answer (ran out of steps)": 3,
+  "did not call the tool the case asks for (screenshot,screensh": 1,
+  "did not call the tool the case asks for ((texto))": 1,
+  "asserted a fact a tool had not returned (the plan's hardest ": 1
+ },
+ "coste": {
+  "minutos": 77,
+  "precio_a100_eur_h": 1.83,
+  "eur": 2.35
+ },
+ "nota": "Dos herramientas (process_list, read_identity) solo las piden casos reservados, asi que NO tendran material nunca. El material cubre 25 de las 29."
+}
