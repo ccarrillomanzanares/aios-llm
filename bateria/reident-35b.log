@@ -1,0 +1,38 @@
+================================================================================================
+MULTI-STEP BENCH OF aios-llm  —  v2 (shipped code)     label: 35b-ident-nuevo
+================================================================================================
+bench         : casos.json v2.0  (51 cases)
+endpoint      : http://172.19.0.2:8080   (key: yes)
+system prompt : 11881 chars (prompt_produccion.txt)
+tools         : 29
+evaluations   : 1 cases x 6 languages = 6  (up to 6 steps each)
+tool check    : on
+================================================================================================
+  OK    ident-guardar              en   82.3s 1p update_identity task:yes
+  OK    ident-guardar              es   73.6s 2p update_identity,read_identity task:yes
+  OK    ident-guardar              fr   57.3s 1p update_identity task:yes
+  OK    ident-guardar              de   48.8s 1p update_identity task:yes
+  OK    ident-guardar              it   56.4s 1p update_identity task:yes
+  OK    ident-guardar              pt   70.3s 1p update_identity task:yes
+
+================================================================================================
+SCORE (measurable evaluations): 6/6 = 100.0%
+INSTRUMENT FAILURES           : 0 of 6 evaluations (none)
+
+BY GROUP
+   identidad         6/ 6  100%
+
+BY LANGUAGE
+   de                1/ 1  100%
+   en                1/ 1  100%
+   es                1/ 1  100%
+   fr                1/ 1  100%
+   it                1/ 1  100%
+   pt                1/ 1  100%
+
+STEPS: mean 1.2 per evaluation (max 2)  |  one step = one round trip with real execution
+TIME: mean 64.8s per evaluation
+TASKS CHECKED IN THE ORACLE : 6/6
+
+details: /home/ccmai/aios-llm/bateria/resultado_35b-ident-nuevo.json
+trajectories (training material): /home/ccmai/aios-llm/bateria/trayectorias_35b-ident-nuevo.jsonl

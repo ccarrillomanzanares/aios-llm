@@ -24,6 +24,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 import ejecutor  # noqa: E402
 from bateria_agente import puntuar  # noqa: E402
+from revisar_respuesta import revisar, texto_final  # noqa: E402
 
 
 def llamadas_de(mensajes):
@@ -83,11 +84,16 @@ def main():
             nuevas.append(dict(f))
             continue
         p = puntuar(caso, llamadas_de(tray[k]["mensajes"]), f.get("texto_final", ""), capa)
+        # The closing answer, from the trajectory and not from the row: the row is
+        # truncated to 300 chars and the number being looked for can fall past it.
+        r_ok = revisar(caso, texto_final(tray[k]["mensajes"]))
+        p["respuesta_ok"] = r_ok
         for campo in ("pasos", "segundos", "texto_final", "herramienta_usada", "error",
                       "tarea_ok", "caso", "grupo", "idioma", "tipo"):
             if campo in f:
                 p[campo] = f[campo]
-        p["_ok"] = p["_ok"] and (f.get("tarea_ok") is not False)
+        p["_ok"] = (p["_ok"] and (f.get("tarea_ok") is not False)
+                    and (f.get("comprobacion_ok") is not False) and (r_ok is not False))
         if bool(p["_ok"]) != bool(f.get("_ok")):
             cambios.append((k, bool(f.get("_ok")), bool(p["_ok"]), p.get("_encontrados")))
         nuevas.append(p)

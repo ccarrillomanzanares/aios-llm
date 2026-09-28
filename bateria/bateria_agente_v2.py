@@ -34,6 +34,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE)
 import ejecutor_v2 as ejecutor          # noqa: E402  the one that runs shipped code
 from bateria_agente import puntuar, leer_clave_api, preguntar, MAX_TURNOS  # noqa: E402
+from revisar_respuesta import revisar, detalle  # noqa: E402  checks the CLOSING ANSWER
 
 
 def _cargar(nombre):
@@ -120,6 +121,14 @@ def evaluar(caso, idioma, texto, args, prompt, tools, capa, clave):
         ejecutor.sesion_terminar()
 
     p = puntuar(caso, llamadas, respuesta_texto, capa)
+
+    # The closing answer, checked against what the case says is true. Without this
+    # the bench only knew which tool was called, and that is how it came to pass
+    # "0 packages installed" (false) while failing "432" (true).
+    resp_ok = revisar(caso, respuesta_texto)
+    p["respuesta_ok"] = resp_ok
+    p["respuesta_detalle"] = detalle(caso, respuesta_texto) if resp_ok is False else ""
+
     p.update({"caso": caso["id"], "grupo": caso["grupo"], "idioma": idioma, "tipo": caso["tipo"],
               "pasos": pasos, "segundos": round(time.time() - t0, 1),
               "tarea_ok": tarea, "comprobacion_ok": comp_ok,
@@ -129,7 +138,11 @@ def evaluar(caso, idioma, texto, args, prompt, tools, capa, clave):
     # no measurement. It is recorded as an instrument failure and excluded.
     if comp_ok is False:
         p["error"] = "INSTRUMENT: comprobacion failed (%s)" % comp_detalle
-    p["_ok"] = p["_ok"] and (tarea is not False) and (comp_ok is not False)
+    p["_ok"] = (p["_ok"] and (tarea is not False) and (comp_ok is not False)
+                and (resp_ok is not False))
+    if resp_ok is False:
+        print("       the closing answer does not carry the expected data: %s"
+              % p["respuesta_detalle"][:120])
     return p, mensajes
 
 

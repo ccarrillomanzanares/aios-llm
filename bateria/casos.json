@@ -90,9 +90,18 @@
     ]
    },
    "prohibido": [
-    "apt",
-    "apt-get",
-    "dpkg"
+    {
+     "regex": "\\bapt\\s+(install|remove|purge|update|upgrade|autoremove|search)\\b"
+    },
+    {
+     "regex": "\\bapt-get\\b"
+    },
+    {
+     "regex": "\\bdpkg\\s+(-i|--install|--remove|--purge|--configure|--unpack)\\b"
+    },
+    {
+     "regex": "\\brpm\\s+(-i|-e|-U|--install|--erase|--upgrade)\\b"
+    }
    ],
    "verificacion": {
     "comando": "sven list | wc -l",
@@ -349,9 +358,18 @@
     ]
    },
    "prohibido": [
-    "apt",
-    "dpkg",
-    "rpm"
+    {
+     "regex": "\\bapt\\s+(install|remove|purge|update|upgrade|autoremove|search)\\b"
+    },
+    {
+     "regex": "\\bapt-get\\b"
+    },
+    {
+     "regex": "\\bdpkg\\s+(-i|--install|--remove|--purge|--configure|--unpack)\\b"
+    },
+    {
+     "regex": "\\brpm\\s+(-i|-e|-U|--install|--erase|--upgrade)\\b"
+    }
    ],
    "verificacion": null,
    "por_que": "State of the package database: sven version gives 428 packages, 43 upgrades, 16 orphans.",
@@ -362,7 +380,12 @@
     "de": "Wie viele Pakete habe ich installiert und stehen Aktualisierungen aus?",
     "it": "Quanti pacchetti ho installati e ci sono aggiornamenti in sospeso?",
     "pt": "Quantos pacotes tenho instalados e há atualizações pendentes?"
-   }
+   },
+   "respuesta_contiene_alguno": [
+    "428",
+    "432",
+    "433"
+   ]
   },
   {
    "id": "diag-disco",
@@ -537,14 +560,14 @@
     "comando": "cat /root/.aios-identidad 2>/dev/null; echo FIN",
     "espera_contiene": ""
    },
-   "por_que": "Saving a piece of data in the agent's memory.",
+   "por_que": "Saving a stable fact in the agent's memory. The premise was changed on 28 sep: it used to claim the machine uses a static IP, which is FALSE (it uses DHCP), so the 4B wrote the falsehood down unchecked and scored 6/6 while the 35B checked, found DHCP and was failed. A case must not reward writing down a lie.",
    "idiomas": {
-    "en": "Remember that this machine uses a static IP address.",
-    "es": "Recuerda que esta máquina usa dirección IP fija.",
-    "fr": "Retiens que cette machine utilise une adresse IP fixe.",
-    "de": "Merke dir, dass diese Maschine eine feste IP-Adresse benutzt.",
-    "it": "Ricorda che questa macchina usa un indirizzo IP fisso.",
-    "pt": "Lembra-te que esta máquina usa endereço IP fixo."
+    "en": "Remember that this machine's package manager is sven.",
+    "es": "Recuerda que el gestor de paquetes de esta máquina es sven.",
+    "fr": "Retiens que le gestionnaire de paquets de cette machine est sven.",
+    "de": "Merke dir, dass der Paketmanager dieser Maschine sven ist.",
+    "it": "Ricorda che il gestore di pacchetti di questa macchina è sven.",
+    "pt": "Lembra-te que o gestor de pacotes desta máquina é o sven."
    }
   },
   {
@@ -627,6 +650,10 @@
      {
       "herramienta": "run_command",
       "patron": "\\b(lsblk|blkid|df|ls|find|cat\\s+/proc/partitions)\\b"
+     },
+     {
+      "herramienta": "run_command",
+      "patron": "\\b(lsblk|blkid|df|ls|find|cat\\s+/proc/partitions|mount|swapon|fdisk\\s+-l|parted\\s+-l)\\b"
      }
     ]
    },
