@@ -20,3 +20,7 @@ bateria/bateria_v2.py
 diag_trampas.json
 # Smoke-test outputs of the v2 bench (they are probes, not measurements)
 resultado_humo*.json
+
+# The raw 4B run and its corrected re-score (the numbers live in ESTADO.md)
+resultado_4b-banco-completo.json
+trayectorias_4b-banco-completo.jsonl
