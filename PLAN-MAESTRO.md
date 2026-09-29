@@ -162,7 +162,7 @@ resultado.
 **El banco, tal como está hoy:** *(generado, no escrito a mano)*
 
 <!-- MEDIDAS:banco INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 **Banco de pruebas: 51 casos x 6 idiomas = 306 evaluaciones.**
 
 | | |
@@ -181,11 +181,12 @@ Las 29 herramientas siguen cubiertas 29/29 por los casos que generan material.
 **Los modelos medidos:**
 
 <!-- MEDIDAS:modelos INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 
 | modelo | configuracion | banco | aciertos | %  | trampas | s/eval | fichero |
 |---|---|---|---|---|---|---|---|
 | 35B | profesor, prompt de produccion | 306 | **302/306** | 98.7 % | 84/84 | 64.7 | `resultado_35b-banco-completo-repuntuado.json` |
+| 4B | prompt corto (214 car.) | 306 | **231/306** | 75.5 % | 58/84 | 48.5 | `resultado_4b-prompt-corto-banco306.json` |
 | 4B | prompt corto (214 car.) | 174 | **126/174** | 72.4 % | 32/54 | 28.0 | `resultado_4b-prompt-corto-repuntuado.json` |
 | 4B | prompt de produccion | 306 | **282/306** | 92.2 % | 80/84 | 68.1 | `resultado_4b-banco-completo-repuntuado.json` |
 | 4B | sin pensamiento | 174 | **153/174** | 87.9 % | 43/54 | 49.1 | `resultado_4b-sin-thinking-repuntuado.json` |
@@ -200,13 +201,14 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 
 **Conclusiones, con las cifras de hoy:**
 
-1. **El andamiaje sigue valiendo ~20 puntos**: sin él el 4B está en el 72,4 % de la ronda
+1. **El andamiaje sigue valiendo ~17 puntos**: sin él el 4B está en el **75,5 %** (231/306, medido el
+   29 sep sobre el banco completo — el 72,4 % era del banco de 174 y no se cita como vigente)
    histórica; con él, en la cifra de arriba. Todo el conocimiento de AIOS vive hoy **en el
    prompt, no en los pesos**.
 2. **El detalle por bloque, medido** (el 4B, que es el que se entrena), **generado:**
 
 <!-- MEDIDAS:grupos-4B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 **el 4B que se entrena, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -225,7 +227,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
    Y el mismo desglose del profesor, para saber qué es lección y qué es límite del banco:
 
 <!-- MEDIDAS:grupos-35B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 **el 35B profesor, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -259,7 +261,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 **Idiomas, medidos por separado** (nunca en agregado, para que se vea si uno se cae solo):
 
 <!-- MEDIDAS:idiomas-4B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 **el 4B que se entrena, por idioma:**
 
 | bloque | aciertos | fallos | % |
@@ -274,7 +276,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 <!-- MEDIDAS:idiomas-4B FIN -->
 
 <!-- MEDIDAS:idiomas-35B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 **el 35B profesor, por idioma:**
 
 | bloque | aciertos | fallos | % |
@@ -301,7 +303,7 @@ completo** antes de dar por cerrado el detalle.
 > corta **esconde un objetivo que no es decorativo**, porque el §6.4 ya pedía entrenar la versión
 > corta. Son **dos objetivos**, y hay que decir los dos:
 
-1. **No bajar del 92,2 % con andamio, subiendo el 72,4 % sin él.** El modelo final tiene que hacer
+1. **No bajar del 92,2 % con andamio, subiendo el 75,5 % sin él.** El modelo final tiene que hacer
    con el prompt corto lo que hoy hace con el largo. Es la mejora que **la ISO nota**: menos
    instrucciones es menos contexto que procesar por turno, y el prompt corto (214 caracteres) ya
    está escrito y medido.
@@ -312,7 +314,7 @@ completo** antes de dar por cerrado el detalle.
 **El techo de este banco, medido.** Cruzando las evaluaciones del 4B con las del profesor:
 
 <!-- MEDIDAS:techo INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 Cruzando el 4B con el profesor en las 306 evaluaciones del banco de 306:
 
 | | evaluaciones |
@@ -470,7 +472,7 @@ oportunidad del entrenamiento). Ese es hoy el caso de **identidad**, y solo de i
 **El mapa medido que decide el reparto:**
 
 <!-- MEDIDAS:grupos-4B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 **el 4B que se entrena, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -493,7 +495,7 @@ los fallos medidos**, contando solo los bloques que fallan, y excluyendo los res
 pueden recibir material:
 
 <!-- MEDIDAS:reparto INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 
 | bloque | fallos medidos (no reservados) | % del material |
 |---|---|---|
@@ -716,40 +718,92 @@ siempre, así que no hay herramientas ocultas por las que preguntarse.
 > **ya saca el 92,2 %** con el andamio. Es **meter el andamio dentro de los pesos**, y eso sirve a
 > dos cosas a la vez:
 >
-> 1. **No bajar del 92,2 % con andamio, subiendo el 72,4 % sin él** (medido con el banco viejo; hay
->    que re-medirlo con el completo). Puerta doble en §8.6.
+> 1. **No bajar del 92,2 % con andamio, subiendo el 75,5 % sin él** (re-medido el 29 sep sobre el
+>    banco completo: 231/306. El 72,4 % era del banco de 174 y queda como historia). Puerta doble en §8.6.
 > 2. **Poder recortar el andamiaje de producción** (11.881 caracteres) hacia el prompt corto, sin
 >    perder conducta. Es lo que **la ISO nota**: menos instrucciones, menos contexto por turno.
+>
+> **El hueco no está repartido** (medido con el prompt corto, banco de 306): paquetes 36,7 %,
+> trampas 69,0 %, diagnóstico 78,3 %, escritorio 78,8 %, y **ficheros, identidad, red y procesos
+> ya al 100 %**. Enseñar AIOS entero no sube la nota; esos cuatro bloques sí.
 >
 > **Material:** las trayectorias del 35B en los 6 idiomas (profesor), cada una con la **salida real
 > del oráculo** — no texto plausible. La Fase 1 las amplía con el profesor en el oráculo, **respetando
 > los casos reservados** (`holdout.txt`), que nunca generan material y son el examen honesto.
+> **Generado el 29 sep: 1.430 trayectorias** (41 casos × 6 idiomas × 6 temperaturas, 96,9 % pasan
+> el filtro), 7,8 h de A100.
 >
 > **Coste, medido en Lambda (A100) el 28 sep** — ya no es una estimación: 27,5 s/eval frente a los
 > 64,7 s del VPS en CPU. La GPU **sí** era el cuello de botella (el prompt de 5.930 tokens se
 > procesa en 3,5 s en vez de 52,9 s):
 >
 > <!-- MEDIDAS:coste INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-28. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
 Generar con el profesor en una A100 de Lambda (27.5 s/eval a 2,00 $/h = 1.83 EUR/h):
 
 | vueltas de temperatura | trayectorias | tiempo | coste |
 |---|---|---|---|
 | 1 (temperatura 0,0, comparable) | 246 | 2.5 h | **5 EUR** |
-| 3 | 738 | 7.5 h | **14 EUR** |
-| 6 (plan B completo) | 1476 | 15.0 h | **27 EUR** |
+| 6 (plan completo) | 1476 | 15.0 h | **27 EUR** |
+| **6 (REAL, 29 sep)** | **1476 intentos -> 1430 guardadas** | **7.8 h medidas** | **~14 EUR** |
 
 El +9 s por evaluacion es lo que cuesta el oraculo (reset medido 8,4 s + herramientas 0,21 s). Ese coste NO baja con GPU: es el suelo del tiempo.
+
+Las filas sin la marca REAL son PREVISION a 27,5 s/eval. La ronda B real tardo 469 min y costo ~14 EUR: la prevision iba al alza.
 <!-- MEDIDAS:coste FIN -->
 
-- **Método:** QLoRA. 4B cabe sin apuros en una sola A100 40GB.
-- **Herramientas:** Unsloth o LLaMA-Factory.
+### 7.1 La receta, escrita y EJECUTADA (29 sep)
+
+**Ya no es una propuesta: se ha corrido.** Antes de gastar horas de GPU se probó en pequeño —20
+pasos, 10 min— y esa prueba cazó **cuatro fallos reales** (el formato de los argumentos de las
+herramientas, dos cambios de nombre de parámetros entre versiones de `transformers`, y una falta de
+memoria). Después se lanzó la tanda completa. Reproducir:
+
+```bash
+# 1) del material verificado al dataset de entrenamiento
+python3 entrenamiento/preparar_sft.py            # -> entrenamiento/sft/{train,valid}.jsonl + tools.json
+
+# 2) probar la tubería en pequeño ANTES de pagar GPU
+python3 entrenamiento/entrenar_sft.py --smoke-test
+
+# 3) la tanda completa
+python3 entrenamiento/entrenar_sft.py
+```
+
+| Ajuste | Valor | Por qué |
+|---|---|---|
+| Modelo base | `Qwen/Qwen3.5-4B` (9,34 GB) | El GGUF que sirve producción está cuantizado y **no se puede entrenar** |
+| Cuantización | 4 bits NF4, doble | Un 4B en precisión completa + activaciones no cabe cómodo en 40 GB |
+| LoRA | r=32, alpha=64, dropout=0,05 | Rango generoso para cambio de conducta; no es aprender un idioma |
+| Módulos | q,k,v,o + gate,up,down | Todas las proyecciones de atención y de la red |
+| Épocas | 3 (474 pasos) | Corto: dar forma a una conducta, no inyectar conocimiento |
+| Ritmo | 1e-4, coseno, 3 % de calentamiento | En `transformers` 5, `warmup_ratio` ya no existe: se calcula `warmup_steps` |
+| Lote | **1** × 8 de acumulación | Medido: con lote 2 y secuencias de 3-4 mil fichas se agota la memoria |
+| Longitud máxima | 8192 fichas | El material no pasa de 2308: **no se trunca nada** |
+| Pérdida | Solo en turnos del asistente | Las salidas de herramientas son la referencia, **no** algo que generar |
+| Empaquetado | **DESACTIVADO** | Mezclar conversaciones hace que la pérdida de una dependa de la anterior |
+
+**Datos:** 1.259 ejemplos de entrenamiento + 41 de validación, con el prompt corto (213 caracteres)
+en lugar del de producción, los 57 ejemplos que copiaban el fallo del profesor tirados, y los
+duplicados exactos colapsados. **Los 10 casos reservados: 0 colados** (el script aborta si aparece uno).
+
+**Cifras medidas:** 30,03 s/paso → **474 pasos en 4,0 h ≈ 7,24 €** (A100 40 GB a 1,99 $/h).
+**La estimación que traía este plan era de 60 €: estaba 8× por encima.** Es la razón de pesar el
+entrenamiento en pequeño antes de lanzarlo — y de no volver a prometer una cifra de GPU sin medirla.
+
+- **Método:** QLoRA *(ejecutado, ver arriba)*. 4B cabe sin apuros en una sola A100 40GB.
+- **Herramientas:** `transformers` + `peft` + `bitsandbytes` a mano (torch 2.14+cu126, transformers
+  5.17, peft 0.21.1, bitsandbytes 0.50.2). Unsloth o LLaMA-Factory quedan como alternativa, **no
+  como dependencia**: la receta de arriba no los necesita.
 - **Secuencia:**
-  1. **SFT corto y verificado** (cold start canónico) — enseña la forma exacta.
-  2. **SFT masivo** sobre el dataset completo.
+  1. **SFT corto y verificado** (cold start canónico) — enseña la forma exacta. *(hecho: la prueba de humo)*
+  2. **SFT masivo** sobre el dataset completo. *(lanzado el 29 sep)*
   3. **GRPO con recompensa de ejecución** *(opcional, fase tardía)* — recompensa = ¿pasó el checker + no destructivo + idioma correcto + menos turnos.
 - **Antes de cada run en GPU:** los checks de §7, que **hay que escribir en este repo** (el `preflight_sft.py` del plan viejo **no existe aquí**, era de `aios-model`, que está descartado): **+ 2 nuevos**: cobertura de idiomas y presupuesto del prompt corto.
 - **No-regresión obligatoria:** cada iteración se mide contra la batería completa; ninguna métrica puede bajar.
+- **Al medir el modelo entrenado, el montaje es el del 4B de producción**, no la GPU: el 4B corre en
+  **CPU** en el VPS (sin `-ngl`), y medirlo en una A100 mediría una configuración que no existe. Esa
+  medida tarda ~3 h (48,5 s/eval), no minutos.
 
 ---
 
@@ -788,7 +842,7 @@ El +9 s por evaluacion es lo que cuesta el oraculo (reset medido 8,4 s + herrami
 
 | Puerta | Condición | Consecuencia si falla |
 |---|---|---|
-| **Mejora** | El prompt corto (214 car.) sube del **72,4 %** | No se recorta el prompt: se sigue sirviendo con el andamio |
+| **Mejora** | El prompt corto (214 car.) sube del **75,5 %** | No se recorta el prompt: se sigue sirviendo con el andamio |
 | **No-regresión** | Con el prompt de producción **no baja del 92,2 %** | El modelo nuevo no sustituye a nada |
 | **Seguridad** | **Cero** destructivos sin pedir permiso | No se integra, se mire lo que se mire |
 
@@ -944,9 +998,9 @@ Siguiendo tu `ENTORNOS.md`:
 
 | Fase | Qué | Cómo se sabe que está hecha | Coste GPU |
 |---|---|---|---|
-| **0. Auditoría y arnés** | ~~Oráculo AIOS real~~ (**hecho**, §6.6). ~~Auditoría de la capa de seguridad de `aios-agent`~~ (**hecha**, §9). ~~Cerrar los 2 bypass~~ (**hecho**, commit `e1f9072`: 54/54). ~~Batería de evaluación~~ (**hecha**, §6.7: **51 casos × 6 idiomas = 306 evaluaciones con 29/29 herramientas**, con el prompt y los esquemas reales de producción). Análisis de lo reutilizable (§6.5a), selección **medida** del profesor (§6.5b). **Sin GPU**, más las medidas del 28 sep (§3.1): **el 4B en 92,2 %, el 35B en 98,7 %**, y el 4B sin andamio en 72,4 % (banco viejo) | La batería corre y da un número. **Línea base medida del 4B, que el plan no tenía.** Profesor elegido con datos. **Cero bypass conocidos abiertos** — con **uno nuevo medido** (`docker`, §9) pendiente de cerrar | **0 €** |
+| **0. Auditoría y arnés** | ~~Oráculo AIOS real~~ (**hecho**, §6.6). ~~Auditoría de la capa de seguridad de `aios-agent`~~ (**hecha**, §9). ~~Cerrar los 2 bypass~~ (**hecho**, commit `e1f9072`: 54/54). ~~Batería de evaluación~~ (**hecha**, §6.7: **51 casos × 6 idiomas = 306 evaluaciones con 29/29 herramientas**, con el prompt y los esquemas reales de producción). Análisis de lo reutilizable (§6.5a), selección **medida** del profesor (§6.5b). **Sin GPU**, más las medidas del 28 sep (§3.1): **el 4B en 92,2 %, el 35B en 98,7 %**, y el 4B sin andamio en **75,5 %** (banco completo, 29 sep) | La batería corre y da un número. **Línea base medida del 4B, que el plan no tenía.** Profesor elegido con datos. **Cero bypass conocidos abiertos** — con **uno nuevo medido** (`docker`, §9) pendiente de cerrar | **0 €** |
 | **1. Datos** | Generación con el profesor **en el oráculo, con GPU alquilada** (Lambda, decisión del 28 sep: en el VPS son 64,7 s/eval y en una A100 27,5 s), **dirigida por el mapa medido de §6.3** y **respetando los casos reservados** (`holdout.txt`), que son el examen honesto. Objetivo: **ampliar** las trayectorias del profesor hasta donde pida el mapa, no 40-60k por inercia. Coste medido abajo | % que pasa el filtro y % verificado por ejecución. **Y el examen honesto** sobre los casos reservados | **~3,7 € por vuelta** (medido: 246 trayectorias) |
-| **2. SFT** | QLoRA 4B, 3-4 ablaciones | Batería superada, no-regresión cero | ~60 € |
+| **2. SFT** | QLoRA 4B, 3-4 ablaciones | Batería superada, no-regresión cero | **~7,2 € medidos** (474 pasos, 4,0 h; la estimación de 60 € estaba 8× por encima) |
 | **3. Cuantización** | GGUF Q4_K_M / Q5_K_M, medir degradación | El comportamiento aguanta el quant | ~10 € |
 | **4. Integración** | Router (§10), `config.yaml`, A/B contra el 35B | `aios-agent` usa `aios-llm` y **supera la puerta** | ~50 € |
 | **5. GRPO** *(opcional)* | Recompensa de ejecución | Sube la batería sin bajar nada | ~2.500 € |

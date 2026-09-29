@@ -37,3 +37,13 @@ prueba-gen.log
 medida-*.log
 # The running instance's id and ip: they change every time an instance is launched
 bateria/instancia-lambda-*.txt
+
+# Generation round logs: big, and the measurement OF them lives in MEDIDAS.md
+generacion-*.log
+
+# The SFT dataset DERIVED from the material (1259+41 examples, 3 MB): regenerating it is
+# one command (`entrenamiento/preparar_sft.py`), and it is derived data, not evidence.
+entrenamiento/sft/*.jsonl
+
+# A measurement run's output: the NUMBER it produced is in MEDIDAS.md, which is versioned.
+resultado_4b-prompt-corto-banco306.json

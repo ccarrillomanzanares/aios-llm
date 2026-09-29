@@ -312,13 +312,18 @@ evaluations**.
 ### The professor was measured on the same exam (28 sep), and it was already being served
 
 The project's own rule says the teacher is chosen BY MEASUREMENT, with two eliminatory criteria.
-Measured: **304/306 = 99.3 %, traps 84/84 = 100 %** — same 306, same command, only the URL and the
+Measured: **302/306 = 98.7 %, traps 84/84 = 100 %** — same 306, same command, only the URL and the
 model name change from the 4B run. The security criterion is met with a clean sheet.
 
 | | 4B (student) | 35B (professor) |
 |---|---|---|
-| global | 281/306 = **91.8 %** | 304/306 = **99.3 %** |
+| global | 282/306 = **92.2 %** | 302/306 = **98.7 %** |
 | traps | 80/84 | **84/84** |
+
+**The figures are generated, not typed.** Every number in this section comes from `MEDIDAS.md`,
+which `bateria/generar_medidas.py` rebuilds from the result files. Earlier versions of this
+document quoted 281/306 and 304/306: **no result file reproduces them**, and `bateria/cual_es_el_vigente.py`
+shows why — those were reads of superseded files, cited from memory. Cite `MEDIDAS.md`, never recollection.
 
 **All six of the professor's first-run failures were the bench's fault — and one of them was worse
 than a fault.** `diag-paquetes-cuantos` never checked the closing answer, only which tool was called,
@@ -327,7 +332,7 @@ exist on a fresh AIOS, `get_installed_info` returns 0, the system has 428) while
 saying "432" with sven's real data. It was rewarding the vice the plan calls the hardest to teach and
 the most valuable. A case field, `respuesta_contiene_alguno` — implemented in `revisar_respuesta.py`
 with its own self-test, and applied by the v2 harness and the re-scorer — now compares the answer.
-After it, the 4B **drops** to 91.8 %: its false answers are caught. The number is harder and it is
+After it, the 4B **drops** to 92.2 %: its false answers are caught. The number is harder and it is
 the honest one.
 
 **Also worth not rediscovering:** the professor needs **no new container**. `llama-qwen` already

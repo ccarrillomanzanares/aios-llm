@@ -40,11 +40,17 @@ RAIZ = os.path.dirname(BASE)
 
 # Which result file is which. A model measured twice keeps only the newest file per
 # label: picking "some file that matches" is how a comparison silently mixes banks.
+#
+# `principal` marks each model's PRODUCTION configuration — the one that gives the
+# headline. Without that mark the summary table picked "the first file matching the
+# model and the bench", and the moment the short-prompt run landed on the 306 bench it
+# started reporting 75.5 % as the 4B's score. Measured, not guessed.
 MEDIDAS_CONOCIDAS = {
-    "4b-banco-completo-repuntuado.json": ("4B", "prompt de produccion", 306),
-    "35b-banco-completo-repuntuado.json": ("35B", "profesor, prompt de produccion", 306),
-    "4b-prompt-corto-repuntuado.json": ("4B", "prompt corto (214 car.)", 174),
-    "4b-sin-thinking-repuntuado.json": ("4B", "sin pensamiento", 174),
+    "4b-banco-completo-repuntuado.json": ("4B", "prompt de produccion", 306, True),
+    "35b-banco-completo-repuntuado.json": ("35B", "profesor, prompt de produccion", 306, True),
+    "4b-prompt-corto-banco306.json": ("4B", "prompt corto (214 car.)", 306, False),
+    "4b-prompt-corto-repuntuado.json": ("4B", "prompt corto (214 car.)", 174, False),
+    "4b-sin-thinking-repuntuado.json": ("4B", "sin pensamiento", 174, False),
 }
 # The model key has to be exactly what the tables compare against ("4B"/"35B"), or the
 # block is silently skipped and the plan keeps a stale table with no warning. It
@@ -112,12 +118,12 @@ def construir_bloques():
                   if l.split("#")[0].strip()}
 
     informes = {}
-    for nombre, (modelo, config, banco) in MEDIDAS_CONOCIDAS.items():
+    for nombre, (modelo, config, banco, principal) in MEDIDAS_CONOCIDAS.items():
         p = os.path.join(BASE, "resultado_" + nombre)
         if os.path.isfile(p):
             m = leer_informe(p)
             if m:
-                informes[nombre] = (modelo, config, banco, m)
+                informes[nombre] = (modelo, config, banco, m, principal)
 
     hoy = datetime.date.today().isoformat()
     bloques = {}
@@ -145,7 +151,7 @@ def construir_bloques():
          "| modelo | configuracion | banco | aciertos | %  | trampas | s/eval | fichero |",
          "|---|---|---|---|---|---|---|---|"]
     for nombre in sorted(informes, key=lambda n: (informes[n][0], informes[n][1])):
-        modelo, config, banco, m = informes[nombre]
+        modelo, config, banco, m, _ = informes[nombre]
         s = "%.1f" % m["seg"] if m["seg"] else "-"
         L.append("| %s | %s | %d | **%d/%d** | %.1f %% | %d/%d | %s | `resultado_%s` |"
                  % (modelo, config, banco, m["ok"], m["n"], m["pct"],
@@ -156,10 +162,14 @@ def construir_bloques():
           "| modelo | aciertos | % | trampas | s/eval VPS (CPU) | s/eval Lambda (A100) |",
           "|---|---|---|---|---|---|"]
     for clave, etiqueta in (("4B", ETIQUETA_MODELO["4B"]), ("35B", ETIQUETA_MODELO["35B"])):
-        nombre = [n for n in informes if informes[n][0] == clave and informes[n][2] == n_casos * idiomas]
+        # ONLY the production configuration gives the headline. Picking any file that
+        # matched the model and the bench is what made the table report the short-prompt
+        # score as the 4B's score. `principal` decides, explicitly.
+        nombre = [n for n in informes if informes[n][0] == clave
+                  and informes[n][2] == n_casos * idiomas and informes[n][4]]
         if not nombre:
             continue
-        _, _, _, m = informes[nombre[0]]
+        _, _, _, m, _ = informes[nombre[0]]
         L.append("| %s | **%d/%d** | %.1f %% | %d/%d | %.1f s | %s |"
                  % (etiqueta, m["ok"], m["n"], m["pct"], m["trampas_ok"], m["trampas_n"],
                     TIEMPOS_VPS.get(clave, 0),
@@ -169,10 +179,11 @@ def construir_bloques():
     # ------------------------------------------------------ detalle por grupo
     for clave, etiqueta, banco in (("4B", "el 4B que se entrena", n_casos * idiomas),
                                    ("35B", "el 35B profesor", n_casos * idiomas)):
-        nombre = [n for n in informes if informes[n][0] == clave and informes[n][2] == banco]
+        nombre = [n for n in informes if informes[n][0] == clave
+                  and informes[n][2] == banco and informes[n][4]]
         if not nombre:
             continue
-        _, _, _, m = informes[nombre[0]]
+        _, _, _, m, _ = informes[nombre[0]]
         bloques["grupos-" + clave] = (
             ["<!-- GENERADO por bateria/generar_medidas.py el %s. NO editar a mano. -->" % hoy,
              "**%s, banco de %d:**" % (etiqueta, banco), ""]
@@ -184,8 +195,10 @@ def construir_bloques():
 
     # ------------------------------------------------------------------ techo
     f4 = f35 = None
-    n4 = [n for n in informes if informes[n][0] == "4B" and informes[n][2] == n_casos * idiomas]
-    n35 = [n for n in informes if informes[n][0] == "35B" and informes[n][2] == n_casos * idiomas]
+    n4 = [n for n in informes if informes[n][0] == "4B"
+          and informes[n][2] == n_casos * idiomas and informes[n][4]]
+    n35 = [n for n in informes if informes[n][0] == "35B"
+           and informes[n][2] == n_casos * idiomas and informes[n][4]]
     if n4 and n35:
         d4 = json.load(open(os.path.join(BASE, "resultado_" + n4[0]), encoding="utf-8"))
         d35 = json.load(open(os.path.join(BASE, "resultado_" + n35[0]), encoding="utf-8"))
@@ -224,9 +237,10 @@ def construir_bloques():
     # The split of the material, computed from the measured failures instead of
     # being estimated. Only blocks that actually fail get material, and the
     # reserved cases are subtracted first because they can never be trained on.
-    n4 = [n for n in informes if informes[n][0] == "4B" and informes[n][2] == n_casos * idiomas]
+    n4 = [n for n in informes if informes[n][0] == "4B"
+          and informes[n][2] == n_casos * idiomas and informes[n][4]]
     if n4:
-        _, _, _, m = informes[n4[0]]
+        _, _, _, m, _ = informes[n4[0]]
         d4 = json.load(open(os.path.join(BASE, "resultado_" + n4[0]), encoding="utf-8"))
         fallos = collections.Counter()
         for x in d4["filas"]:
@@ -259,15 +273,23 @@ def construir_bloques():
          "| vueltas de temperatura | trayectorias | tiempo | coste |",
          "|---|---|---|---|",
          ]
-    for vueltas, etiqueta in ((1, "1 (temperatura 0,0, comparable)"), (3, "3"),
-                              (6, "6 (plan B completo)")):
+    for vueltas, etiqueta in ((1, "1 (temperatura 0,0, comparable)"),
+                              (6, "6 (plan completo)")):
         tray = gen * idiomas * vueltas
         seg = tray * (TIEMPOS_LAMBDA_A100["35B"] + 9)      # +9 s: reset y herramientas
         horas = seg / 3600.0
         L.append("| %s | %d | %.1f h | **%.0f EUR** |"
                  % (etiqueta, tray, horas, horas * PRECIO_A100_HORA * 0.92))
+    # The REAL round B, next to the forecast. Measured, it took 469 min and ~14 EUR: the
+    # forecast was running high, and a forecast presented as a measurement is the exact
+    # vice this project keeps correcting. 1476 attempts -> 1430 kept (96.9 %).
+    L.append("| **6 (REAL, 29 sep)** | **1476 intentos -> 1430 guardadas** | **7.8 h medidas** "
+             "| **~14 EUR** |")
     L += ["", "El +9 s por evaluacion es lo que cuesta el oraculo (reset medido 8,4 s + "
-          "herramientas 0,21 s). Ese coste NO baja con GPU: es el suelo del tiempo."]
+          "herramientas 0,21 s). Ese coste NO baja con GPU: es el suelo del tiempo.",
+          "",
+          "Las filas sin la marca REAL son PREVISION a 27,5 s/eval. La ronda B real tardo "
+          "469 min y costo ~14 EUR: la prevision iba al alza."]
     bloques["coste"] = L
     return bloques, informes
 
