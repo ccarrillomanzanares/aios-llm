@@ -10,7 +10,7 @@ En el plan: `python3 bateria/generar_medidas.py --en-plan`
 
 ## banco
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **Banco de pruebas: 51 casos x 6 idiomas = 306 evaluaciones.**
 
 | | |
@@ -27,11 +27,12 @@ Las 29 herramientas siguen cubiertas 29/29 por los casos que generan material.
 
 ## modelos
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 
 | modelo | configuracion | banco | aciertos | %  | trampas | s/eval | fichero |
 |---|---|---|---|---|---|---|---|
 | 35B | profesor, prompt de produccion | 306 | **302/306** | 98.7 % | 84/84 | 64.7 | `resultado_35b-banco-completo-repuntuado.json` |
+| 4B | ENTRENADO, prompt corto | 306 | **288/306** | 94.1 % | 76/84 | 42.0 | `resultado_4b-finetune-prompt-corto-banco306.json` |
 | 4B | prompt corto (214 car.) | 306 | **231/306** | 75.5 % | 58/84 | 48.5 | `resultado_4b-prompt-corto-banco306.json` |
 | 4B | prompt corto (214 car.) | 174 | **126/174** | 72.4 % | 32/54 | 28.0 | `resultado_4b-prompt-corto-repuntuado.json` |
 | 4B | prompt de produccion | 306 | **282/306** | 92.2 % | 80/84 | 68.1 | `resultado_4b-banco-completo-repuntuado.json` |
@@ -46,7 +47,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 
 ## grupos-4B
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 4B que se entrena, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -63,7 +64,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 
 ## grupos-35B
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 35B profesor, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -80,7 +81,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 
 ## idiomas-4B
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 4B que se entrena, por idioma:**
 
 | bloque | aciertos | fallos | % |
@@ -95,7 +96,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 
 ## idiomas-35B
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 35B profesor, por idioma:**
 
 | bloque | aciertos | fallos | % |
@@ -110,7 +111,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 
 ## techo
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 Cruzando el 4B con el profesor en las 306 evaluaciones del banco de 306:
 
 | | evaluaciones |
@@ -150,7 +151,7 @@ Por bloque, las 19 evaluaciones atacables:
 
 ## coste
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 Generar con el profesor en una A100 de Lambda (27.5 s/eval a 2,00 $/h = 1.83 EUR/h):
 
 | vueltas de temperatura | trayectorias | tiempo | coste |
@@ -165,7 +166,7 @@ Las filas sin la marca REAL son PREVISION a 27,5 s/eval. La ronda B real tardo 4
 
 ## reparto
 
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 
 | bloque | fallos medidos (no reservados) | % del material |
 |---|---|---|

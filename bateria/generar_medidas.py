@@ -51,6 +51,9 @@ MEDIDAS_CONOCIDAS = {
     "4b-prompt-corto-banco306.json": ("4B", "prompt corto (214 car.)", 306, False),
     "4b-prompt-corto-repuntuado.json": ("4B", "prompt corto (214 car.)", 174, False),
     "4b-sin-thinking-repuntuado.json": ("4B", "sin pensamiento", 174, False),
+    # El fine-tune servido en produccion, con el prompt corto. Se registra sin marcarlo
+    # como principal: cambiar el titular del 4B es una decision aparte.
+    "4b-finetune-prompt-corto-banco306.json": ("4B", "ENTRENADO, prompt corto", 306, False),
 }
 # The model key has to be exactly what the tables compare against ("4B"/"35B"), or the
 # block is silently skipped and the plan keeps a stale table with no warning. It

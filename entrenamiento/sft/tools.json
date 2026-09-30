@@ -1,0 +1,561 @@
+[
+ {
+  "type": "function",
+  "function": {
+   "name": "run_command",
+   "description": "Execute a shell command on Linux.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "command": {
+      "type": "string",
+      "description": "Shell command"
+     },
+     "timeout": {
+      "type": "integer",
+      "description": "Timeout (default 30)"
+     },
+     "retry": {
+      "type": "boolean",
+      "description": "Retry on apt errors (default true)"
+     }
+    },
+    "required": [
+     "command"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "list_desktop_apps",
+   "description": "List installed graphical/desktop applications (parses .desktop files). Use to answer 'what GUI apps are installed' or 'is X installed'.",
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "read_file",
+   "description": "Read a file. Use for logs, configs.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "path": {
+      "type": "string",
+      "description": "Absolute path"
+     }
+    },
+    "required": [
+     "path"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "write_file",
+   "description": "Write to a file. System paths blocked.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "path": {
+      "type": "string",
+      "description": "Absolute path"
+     },
+     "content": {
+      "type": "string",
+      "description": "Content to write"
+     }
+    },
+    "required": [
+     "path",
+     "content"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "web_search",
+   "description": "Search the web for technical documentation.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "query": {
+      "type": "string",
+      "description": "Search query"
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Max results (default 3)"
+     }
+    },
+    "required": [
+     "query"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "git_operation",
+   "description": "Run git operations (status, commit, push, diff, log).",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "op": {
+      "type": "string",
+      "description": "status, commit, push, diff, log"
+     },
+     "args": {
+      "type": "string",
+      "description": "Additional arguments"
+     }
+    },
+    "required": [
+     "op"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "process_start",
+   "description": "Start a long-running interactive process.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "command": {
+      "type": "string"
+     },
+     "timeout": {
+      "type": "integer",
+      "description": "Timeout (default 30)"
+     }
+    },
+    "required": [
+     "command"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "process_close",
+   "description": "Terminate a running interactive process.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "proc_id": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "proc_id"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "process_list",
+   "description": "List all running interactive processes.",
+   "parameters": {
+    "type": "object",
+    "properties": {}
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "cloud_reasoning",
+   "description": "Delegate a complex reasoning task to a cloud LLM (DeepSeek/GPT/Claude). Use for architecture design, debugging, multi-step planning. Receives the full conversation context.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "prompt": {
+      "type": "string",
+      "description": "The reasoning task for the cloud model"
+     }
+    },
+    "required": [
+     "prompt"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "get_context_usage",
+   "description": "Shows current context usage: tokens used vs maximum. Helps monitor session size.",
+   "parameters": {
+    "type": "object",
+    "properties": {}
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "screenshot",
+   "description": "Capture the current X11 screen and save it to /tmp/aios-shot.png. Returns the file path and size.",
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "ocr",
+   "description": "Extract text from an image using Tesseract. If no path is given, takes a screenshot first.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "path": {
+      "type": "string",
+      "description": "Optional absolute path to an image. Defaults to the last screenshot."
+     }
+    },
+    "required": []
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "xdotool_type",
+   "description": "Type text into the currently focused X11 window using xdotool.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "text": {
+      "type": "string",
+      "description": "Text to type"
+     }
+    },
+    "required": [
+     "text"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "xdotool_key",
+   "description": "Press a key or key combination via xdotool in the active X11 window.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "key": {
+      "type": "string",
+      "description": "Key or combination, e.g. Return, ctrl+c, alt+Tab"
+     }
+    },
+    "required": [
+     "key"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "xdotool_click",
+   "description": "Move the mouse to the given screen coordinates and click the left mouse button.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "x": {
+      "type": "integer",
+      "description": "X coordinate"
+     },
+     "y": {
+      "type": "integer",
+      "description": "Y coordinate"
+     }
+    },
+    "required": [
+     "x",
+     "y"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "browser_navigate",
+   "description": "Open Chromium (if needed) and navigate to a URL. Returns the page title. Use for web browsing tasks.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "url": {
+      "type": "string",
+      "description": "Full URL, e.g. https://www.google.com/travel/flights"
+     }
+    },
+    "required": [
+     "url"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "browser_eval",
+   "description": "Evaluate JavaScript in the current page and return the result. Use to READ the page: document.body.innerText (visible text), document.title, document.querySelectorAll('a').length, document.URL. Prefer this over OCR.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "expr": {
+      "type": "string",
+      "description": "JavaScript expression returning a value"
+     }
+    },
+    "required": [
+     "expr"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "browser_click",
+   "description": "Click an element by CSS selector (e.g. '#accept', 'button.primary', 'a[href*=flights]'). Use after browser_eval to find the right selector.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "selector": {
+      "type": "string",
+      "description": "CSS selector of the element to click"
+     }
+    },
+    "required": [
+     "selector"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "browser_type",
+   "description": "Type text into an input/textarea by CSS selector (e.g. 'input[name=q]', '#search'). Use after browser_eval to find the right selector.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "selector": {
+      "type": "string",
+      "description": "CSS selector of the input, or the visible text of its label/placeholder"
+     },
+     "text": {
+      "type": "string",
+      "description": "Text to type"
+     }
+    },
+    "required": [
+     "selector",
+     "text"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "browser_elements",
+   "description": "Inventory the interactive elements of the current page (buttons, links, inputs) as readable refs with visible text and CSS selectors. ALWAYS call this before clicking/typing to see what is on the page — like Hermes drive_preview action='elements'. Then click/type by ref text or selector.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "limit": {
+      "type": "integer",
+      "description": "Max elements to return (default 30, max 100)"
+     }
+    }
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "update_identity",
+   "description": "Save something STABLE you learned about this machine into your own long-term self-identity (a service, a path, a device, how the desktop works, a hardware quirk). It becomes part of your system prompt from the next turn, so you will know it in future conversations instead of rediscovering it. Do NOT use it for one-off results. Re-sending a section replaces it.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "section": {
+      "type": "string",
+      "description": "One of: system, desktop, services, paths, network, packages, environment, user, custom"
+     },
+     "text": {
+      "type": "string",
+      "description": "Concise notes (plain text or short markdown). Max 4000 chars."
+     }
+    },
+    "required": [
+     "section",
+     "text"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "read_identity",
+   "description": "Read back your own self-identity notes (what you have learned about this machine so far).",
+   "parameters": {
+    "type": "object",
+    "properties": {},
+    "required": []
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "get_installed_info",
+   "description": "Query the software inventory (auto-recorded when software is installed/removed). With no pkg, lists all installed packages with versions. With pkg, returns details + fact sheet for one package. Use this instead of re-scanning the system when asked about installed software.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "pkg": {
+      "type": "string",
+      "description": "Package name to query (empty = list all)"
+     }
+    }
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "torrent_search",
+   "description": "Search torrents (movies, series, music, documents) by free text and return a numbered list with name, size and seeders. Each result also says whether it can be played WHILE downloading (MKV: yes; MP4: often not) — use it when the user wants to watch before the download finishes. ALWAYS use this to find something to watch or download — never invent names or links. The results are remembered: pass the number to torrent_download.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "query": {
+      "type": "string",
+      "description": "What to search for, e.g. 'Metropolis 1927 Fritz Lang'"
+     },
+     "category": {
+      "type": "string",
+      "description": "'video' (default, movies/series first) or 'all'"
+     },
+     "limit": {
+      "type": "integer",
+      "description": "Max results (default 8)"
+     }
+    },
+    "required": [
+     "query"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "torrent_download",
+   "description": "Start downloading a torrent. Accepts the NUMBER of a previous torrent_search result (preferred), a magnet link, or a .torrent URL.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "target": {
+      "type": "string",
+      "description": "Search result number (e.g. '1'), magnet link or .torrent URL"
+     }
+    },
+    "required": [
+     "target"
+    ]
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "torrent_status",
+   "description": "Progress of downloads (percent, speed, peers, ETA, finished flag). Use it to tell the user how a download is going and to know when it is ready to play.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "Torrent id (omit for all torrents)"
+     }
+    }
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "torrent_play",
+   "description": "Play a downloaded video/audio file with mpv. With no arguments it plays the newest media file in the download folder. Give an id to play that torrent's file.",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "id": {
+      "type": "integer",
+      "description": "Torrent id whose file should be played"
+     },
+     "path": {
+      "type": "string",
+      "description": "Explicit file path to play"
+     },
+     "fullscreen": {
+      "type": "boolean",
+      "description": "Fullscreen (default true)"
+     }
+    }
+   }
+  }
+ },
+ {
+  "type": "function",
+  "function": {
+   "name": "torrent_control",
+   "description": "Manage a torrent: start, stop, verify, remove (keep files) or remove-data (delete files too).",
+   "parameters": {
+    "type": "object",
+    "properties": {
+     "action": {
+      "type": "string",
+      "description": "start | stop | verify | remove | remove-data"
+     },
+     "id": {
+      "type": "integer",
+      "description": "Torrent id"
+     }
+    },
+    "required": [
+     "action",
+     "id"
+    ]
+   }
+  }
+ }
+]
