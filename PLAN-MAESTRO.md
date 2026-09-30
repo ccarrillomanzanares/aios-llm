@@ -162,7 +162,7 @@ resultado.
 **El banco, tal como está hoy:** *(generado, no escrito a mano)*
 
 <!-- MEDIDAS:banco INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **Banco de pruebas: 51 casos x 6 idiomas = 306 evaluaciones.**
 
 | | |
@@ -181,11 +181,12 @@ Las 29 herramientas siguen cubiertas 29/29 por los casos que generan material.
 **Los modelos medidos:**
 
 <!-- MEDIDAS:modelos INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 
 | modelo | configuracion | banco | aciertos | %  | trampas | s/eval | fichero |
 |---|---|---|---|---|---|---|---|
 | 35B | profesor, prompt de produccion | 306 | **302/306** | 98.7 % | 84/84 | 64.7 | `resultado_35b-banco-completo-repuntuado.json` |
+| 4B | ENTRENADO, prompt corto | 306 | **288/306** | 94.1 % | 76/84 | 42.0 | `resultado_4b-finetune-prompt-corto-banco306.json` |
 | 4B | prompt corto (214 car.) | 306 | **231/306** | 75.5 % | 58/84 | 48.5 | `resultado_4b-prompt-corto-banco306.json` |
 | 4B | prompt corto (214 car.) | 174 | **126/174** | 72.4 % | 32/54 | 28.0 | `resultado_4b-prompt-corto-repuntuado.json` |
 | 4B | prompt de produccion | 306 | **282/306** | 92.2 % | 80/84 | 68.1 | `resultado_4b-banco-completo-repuntuado.json` |
@@ -208,7 +209,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 2. **El detalle por bloque, medido** (el 4B, que es el que se entrena), **generado:**
 
 <!-- MEDIDAS:grupos-4B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 4B que se entrena, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -227,7 +228,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
    Y el mismo desglose del profesor, para saber qué es lección y qué es límite del banco:
 
 <!-- MEDIDAS:grupos-35B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 35B profesor, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -261,7 +262,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 **Idiomas, medidos por separado** (nunca en agregado, para que se vea si uno se cae solo):
 
 <!-- MEDIDAS:idiomas-4B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 4B que se entrena, por idioma:**
 
 | bloque | aciertos | fallos | % |
@@ -276,7 +277,7 @@ Los dos modelos sobre el banco de 306 (la vara que se usa hoy):
 <!-- MEDIDAS:idiomas-4B FIN -->
 
 <!-- MEDIDAS:idiomas-35B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 35B profesor, por idioma:**
 
 | bloque | aciertos | fallos | % |
@@ -314,7 +315,7 @@ completo** antes de dar por cerrado el detalle.
 **El techo de este banco, medido.** Cruzando las evaluaciones del 4B con las del profesor:
 
 <!-- MEDIDAS:techo INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 Cruzando el 4B con el profesor en las 306 evaluaciones del banco de 306:
 
 | | evaluaciones |
@@ -472,7 +473,7 @@ oportunidad del entrenamiento). Ese es hoy el caso de **identidad**, y solo de i
 **El mapa medido que decide el reparto:**
 
 <!-- MEDIDAS:grupos-4B INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 **el 4B que se entrena, banco de 306:**
 
 | bloque | aciertos | fallos | % |
@@ -495,7 +496,7 @@ los fallos medidos**, contando solo los bloques que fallan, y excluyendo los res
 pueden recibir material:
 
 <!-- MEDIDAS:reparto INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 
 | bloque | fallos medidos (no reservados) | % del material |
 |---|---|---|
@@ -738,7 +739,7 @@ siempre, así que no hay herramientas ocultas por las que preguntarse.
 > procesa en 3,5 s en vez de 52,9 s):
 >
 > <!-- MEDIDAS:coste INICIO -->
-<!-- GENERADO por bateria/generar_medidas.py el 2026-09-29. NO editar a mano. -->
+<!-- GENERADO por bateria/generar_medidas.py el 2026-09-30. NO editar a mano. -->
 Generar con el profesor en una A100 de Lambda (27.5 s/eval a 2,00 $/h = 1.83 EUR/h):
 
 | vueltas de temperatura | trayectorias | tiempo | coste |
